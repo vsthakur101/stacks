@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isSafeIdentifier, textsQuery, toItemCard } from './archive';
+import { isSafeIdentifier, languageClause, textsQuery, toItemCard } from './archive';
 import { escapeLucene } from './normalize';
 
 describe('textsQuery', () => {
@@ -26,5 +26,17 @@ describe('toItemCard', () => {
   it('accepts real identifiers and rejects unsafe ones', () => {
     expect(isSafeIdentifier('bwb_KS-179-237')).toBe(true);
     expect(isSafeIdentifier('../etc')).toBe(false);
+  });
+});
+
+describe('languageClause', () => {
+  it('matches every spelling archive.org uses for a language', () => {
+    expect(languageClause('hin')).toBe(' AND language:("hin" OR "Hindi")');
+    expect(textsQuery('gita', 'san')).toMatch(/AND language:\("san" OR "Sanskrit"\)$/);
+  });
+
+  it('ignores missing or unknown codes rather than injecting them', () => {
+    expect(languageClause(undefined)).toBe('');
+    expect(languageClause('xx) OR (mediatype:audio')).toBe('');
   });
 });

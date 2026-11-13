@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { findLanguage } from '@/lib/shared/languages';
 import type { ItemCard, Page, SectionId } from '@/lib/shared/types';
 import { getJson, TTL, UpstreamError } from '../http';
 import { archiveThumb, cleanTitle, first, parseDate, realCollections } from './normalize';
@@ -66,25 +67,31 @@ export async function countArchive(query: string): Promise<number> {
 }
 
 /** Items (not collections) in a section matching user text. `text` must already be Lucene-escaped. */
-export function searchSection(section: SectionId, text: string, page: number): Promise<Page<ItemCard>> {
+export function searchSection(section: SectionId, text: string, page: number, lang?: string): Promise<Page<ItemCard>> {
   return searchArchive({
-    query: `(${text}) AND mediatype:texts AND ${sectionScope(section)}`,
+    query: `(${text}) AND mediatype:texts AND ${sectionScope(section)}${languageClause(lang)}`,
     page,
     sort: [],
   });
 }
 
+/** ` AND language:(hin OR Hindi)` for a known language code; empty for none or an unknown code. */
+export function languageClause(code: string | undefined): string {
+  const lang = findLanguage(code);
+  return lang ? ` AND language:(${lang.archiveTerms.map((t) => `"${t}"`).join(' OR ')})` : '';
+}
+
 /** Lucene for "every freely downloadable text on archive.org matching user text". `text` must be escaped. */
-export function textsQuery(text: string): string {
-  return `(${text}) AND mediatype:texts AND NOT collection:(inlibrary OR printdisabled) AND NOT access-restricted-item:true`;
+export function textsQuery(text: string, lang?: string): string {
+  return `(${text}) AND mediatype:texts AND NOT collection:(inlibrary OR printdisabled) AND NOT access-restricted-item:true${languageClause(lang)}`;
 }
 
 /**
  * All free scans on archive.org, not just those Open Library has catalogued. Many Indic texts
  * (e.g. Geeta Press volumes) exist only here. Relevance order.
  */
-export function searchTexts(text: string, page: number, pageSize = 24): Promise<Page<ItemCard>> {
-  return searchArchive({ query: textsQuery(text), page, pageSize });
+export function searchTexts(text: string, page: number, pageSize = 24, lang?: string): Promise<Page<ItemCard>> {
+  return searchArchive({ query: textsQuery(text, lang), page, pageSize });
 }
 
 /** The browse unit of a section: its publications (child collections), most-used first. */

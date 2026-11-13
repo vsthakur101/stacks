@@ -4,6 +4,7 @@ import { Pager } from '@/components/Pager';
 import { SearchBox } from '@/components/SearchBox';
 import { Segmented } from '@/components/Segmented';
 import { SelectAllButton } from '@/components/SelectToggle';
+import { LanguagePicker } from '@/components/LanguagePicker';
 import { Empty, PageHeading, StaleNotice, Unreachable } from '@/components/States';
 import { ItemTile, itemToTray, TileGrid, WorkTile } from '@/components/Tiles';
 import { searchTexts } from '@/lib/server/catalog/archive';
@@ -11,6 +12,7 @@ import { escapeLucene } from '@/lib/server/catalog/normalize';
 import { olText, searchWorks } from '@/lib/server/catalog/openLibrary';
 import { SECTIONS } from '@/lib/server/catalog/sections';
 import { attempt, pageNum, str, type SearchParams } from '@/lib/server/pageParams';
+import { findLanguage } from '@/lib/shared/languages';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Books' };
@@ -36,10 +38,11 @@ const SUBJECTS = [
 type Source = 'catalogue' | 'archive';
 
 /** Builds a /books URL that keeps the query and only the params that apply. */
-function booksHref(q: string, source: Source, borrow = false): string {
+function booksHref(q: string, source: Source, borrow = false, lang?: string): string {
   const p = new URLSearchParams({ q });
   if (source === 'archive') p.set('source', 'archive');
   if (source === 'catalogue' && borrow) p.set('borrow', '1');
+  if (lang) p.set('lang', lang);
   return `/books?${p}`;
 }
 
@@ -49,6 +52,11 @@ export default async function BooksPage({ searchParams }: { searchParams: Search
   const page = pageNum(sp.page);
   const source: Source = str(sp.source) === 'archive' ? 'archive' : 'catalogue';
   const borrow = source === 'catalogue' && str(sp.borrow) === '1';
+  const lang = findLanguage(str(sp.lang))?.code;
+  const hidden: Record<string, string> = {};
+  if (source === 'archive') hidden.source = 'archive';
+  if (borrow) hidden.borrow = '1';
+  if (lang) hidden.lang = lang;
 
   return (
     <>
@@ -58,11 +66,11 @@ export default async function BooksPage({ searchParams }: { searchParams: Search
           action="/books"
           placeholder="Title, author or subject, in any script"
           defaultValue={q}
-          hidden={source === 'archive' ? { source: 'archive' } : borrow ? { borrow: '1' } : undefined}
+          hidden={hidden}
         />
       </div>
       {q ? (
-        <SearchResults q={q} page={page} source={source} borrow={borrow} />
+        <SearchResults q={q} page={page} source={source} borrow={borrow} lang={lang} />
       ) : (
         <Browse page={page} />
       )}
@@ -105,34 +113,49 @@ async function Browse({ page }: { page: number }) {
  * catalogued; archive.org has every scan, including many Indic texts Open Library has never heard of.
  * Both counts are always shown, so the other source is never invisible.
  */
-async function SearchResults({ q, page, source, borrow }: { q: string; page: number; source: Source; borrow: boolean }) {
+async function SearchResults({
+  q,
+  page,
+  source,
+  borrow,
+  lang,
+}: {
+  q: string;
+  page: number;
+  source: Source;
+  borrow: boolean;
+  lang?: string;
+}) {
   const ol = olText(q);
   const lucene = escapeLucene(q);
   const [catalogue, archive] = await Promise.all([
     ol
-      ? attempt(() => searchWorks({ query: ol, page: source === 'catalogue' ? page : 1, pageSize: source === 'catalogue' ? 24 : 1, includeBorrowable: borrow }))
+      ? attempt(() => searchWorks({ query: ol, page: source === 'catalogue' ? page : 1, pageSize: source === 'catalogue' ? 24 : 1, includeBorrowable: borrow, language: lang }))
       : Promise.resolve(null),
-    attempt(() => searchTexts(lucene, source === 'archive' ? page : 1, source === 'archive' ? 24 : 0)),
+    attempt(() => searchTexts(lucene, source === 'archive' ? page : 1, source === 'archive' ? 24 : 0, lang)),
   ]);
 
   const count = (n: number | undefined) => (n === undefined ? '' : ` (${n.toLocaleString('en')})`);
 
   return (
     <>
+      <div className="mb-5">
+        <LanguagePicker current={lang} href={(code) => booksHref(q, source, borrow, code)} />
+      </div>
       <div className="mb-10 flex flex-wrap items-center gap-3">
         <Segmented
           label="Where to search"
           options={[
-            { label: `Catalogued books${count(catalogue?.total)}`, href: booksHref(q, 'catalogue', borrow), current: source === 'catalogue' },
-            { label: `All scans on archive.org${count(archive?.total)}`, href: booksHref(q, 'archive'), current: source === 'archive' },
+            { label: `Catalogued books${count(catalogue?.total)}`, href: booksHref(q, 'catalogue', borrow, lang), current: source === 'catalogue' },
+            { label: `All scans on archive.org${count(archive?.total)}`, href: booksHref(q, 'archive', false, lang), current: source === 'archive' },
           ]}
         />
         {source === 'catalogue' ? (
           <Segmented
             label="Which books"
             options={[
-              { label: 'Free to read', href: booksHref(q, 'catalogue', false), current: !borrow },
-              { label: 'Include borrow-only', href: booksHref(q, 'catalogue', true), current: borrow },
+              { label: 'Free to read', href: booksHref(q, 'catalogue', false, lang), current: !borrow },
+              { label: 'Include borrow-only', href: booksHref(q, 'catalogue', true, lang), current: borrow },
             ]}
           />
         ) : null}
@@ -146,7 +169,7 @@ async function SearchResults({ q, page, source, borrow }: { q: string; page: num
             {archive && archive.total > 0 ? (
               <p>
                 archive.org has {archive.total.toLocaleString('en')} scans that match.{' '}
-                <Link href={booksHref(q, 'archive')} className="text-accent underline underline-offset-4">
+                <Link href={booksHref(q, 'archive', false, lang)} className="text-accent underline underline-offset-4">
                   Show them
                 </Link>
                 .
@@ -164,7 +187,7 @@ async function SearchResults({ q, page, source, borrow }: { q: string; page: num
                 <WorkTile key={w.workId} work={w} />
               ))}
             </TileGrid>
-            <Pager path="/books" params={{ q, borrow: borrow ? '1' : undefined }} page={page} total={catalogue.total} pageSize={catalogue.pageSize} />
+            <Pager path="/books" params={{ q, borrow: borrow ? '1' : undefined, lang }} page={page} total={catalogue.total} pageSize={catalogue.pageSize} />
           </>
         )
       ) : !archive ? (
@@ -185,7 +208,7 @@ async function SearchResults({ q, page, source, borrow }: { q: string; page: num
               <ItemTile key={c.identifier} card={c} section="books" />
             ))}
           </TileGrid>
-          <Pager path="/books" params={{ q, source: 'archive' }} page={page} total={archive.total} pageSize={archive.pageSize} />
+          <Pager path="/books" params={{ q, source: 'archive', lang }} page={page} total={archive.total} pageSize={archive.pageSize} />
         </>
       )}
     </>

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { findLanguage } from '@/lib/shared/languages';
 import type { EbookAccess, Page, WorkCard } from '@/lib/shared/types';
 import { getJson, TTL } from '../http';
 import { olCover, plainText } from './normalize';
@@ -43,14 +44,17 @@ export interface WorkSearchOptions {
   pageSize?: number;
   includeBorrowable?: boolean;
   sort?: 'editions' | 'new' | 'old';
+  /** A code from LANGUAGES; unknown codes are ignored. */
+  language?: string;
 }
 
 export async function searchWorks(opts: WorkSearchOptions): Promise<Page<WorkCard>> {
   const page = Math.max(1, opts.page ?? 1);
   const pageSize = opts.pageSize ?? 24;
   const access = opts.includeBorrowable ? 'has_fulltext:true' : 'ebook_access:public';
+  const lang = findLanguage(opts.language);
   const params = new URLSearchParams({
-    q: `${opts.query} ${access}`.trim(),
+    q: `${opts.query} ${access}${lang ? ` language:${lang.code}` : ''}`.trim(),
     fields: SEARCH_FIELDS,
     page: String(page),
     limit: String(pageSize),

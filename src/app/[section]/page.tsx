@@ -3,12 +3,14 @@ import { notFound } from 'next/navigation';
 import { Pager } from '@/components/Pager';
 import { SearchBox } from '@/components/SearchBox';
 import { SelectAllButton } from '@/components/SelectToggle';
+import { LanguagePicker } from '@/components/LanguagePicker';
 import { Empty, PageHeading, StaleNotice, Unreachable } from '@/components/States';
 import { ItemTile, itemToTray, TileGrid } from '@/components/Tiles';
 import { listPublications, searchSection } from '@/lib/server/catalog/archive';
 import { escapeLucene } from '@/lib/server/catalog/normalize';
 import { ARCHIVE_SECTIONS, SECTIONS } from '@/lib/server/catalog/sections';
 import { attempt, pageNum, str, type SearchParams } from '@/lib/server/pageParams';
+import { findLanguage } from '@/lib/shared/languages';
 import type { SectionId } from '@/lib/shared/types';
 
 export const dynamic = 'force-dynamic';
@@ -30,14 +32,25 @@ export default async function SectionPage({ params, searchParams }: { params: Pa
   const sp = await searchParams;
   const q = str(sp.q);
   const page = pageNum(sp.page);
+  const lang = q ? findLanguage(str(sp.lang))?.code : undefined;
+  const href = (code?: string) => `/${section}?${new URLSearchParams({ q: q ?? '', ...(code ? { lang: code } : {}) })}`;
 
   return (
     <>
       <PageHeading title={cfg.name} lede={cfg.tagline} />
       <div className="mb-12 max-w-2xl">
-        <SearchBox action={`/${section}`} placeholder={`Search ${cfg.name.toLowerCase()}`} defaultValue={q} />
+        <SearchBox action={`/${section}`} placeholder={`Search ${cfg.name.toLowerCase()}`} defaultValue={q} hidden={lang ? { lang } : undefined} />
       </div>
-      {q ? <Results section={section} q={q} page={page} /> : <Publications section={section} page={page} />}
+      {q ? (
+        <>
+          <div className="-mt-6 mb-10">
+            <LanguagePicker current={lang} href={href} />
+          </div>
+          <Results section={section} q={q} page={page} lang={lang} />
+        </>
+      ) : (
+        <Publications section={section} page={page} />
+      )}
     </>
   );
 }
@@ -63,8 +76,8 @@ async function Publications({ section, page }: { section: SectionId; page: numbe
   );
 }
 
-async function Results({ section, q, page }: { section: SectionId; q: string; page: number }) {
-  const results = await attempt(() => searchSection(section, escapeLucene(q), page));
+async function Results({ section, q, page, lang }: { section: SectionId; q: string; page: number; lang?: string }) {
+  const results = await attempt(() => searchSection(section, escapeLucene(q), page, lang));
   if (!results) return <Unreachable what="results" />;
   if (results.results.length === 0) {
     return (
@@ -85,7 +98,7 @@ async function Results({ section, q, page }: { section: SectionId; q: string; pa
           <ItemTile key={c.identifier} card={c} section={section} />
         ))}
       </TileGrid>
-      <Pager path={`/${section}`} params={{ q }} page={page} total={results.total} pageSize={results.pageSize} />
+      <Pager path={`/${section}`} params={{ q, lang }} page={page} total={results.total} pageSize={results.pageSize} />
     </>
   );
 }

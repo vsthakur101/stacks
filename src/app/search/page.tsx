@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SearchBox } from '@/components/SearchBox';
+import { LanguagePicker } from '@/components/LanguagePicker';
 import { Empty, PageHeading } from '@/components/States';
 import { ItemTile, TileGrid, WorkTile } from '@/components/Tiles';
 import { searchSection, searchTexts } from '@/lib/server/catalog/archive';
@@ -8,6 +9,7 @@ import { escapeLucene } from '@/lib/server/catalog/normalize';
 import { olText, searchWorks } from '@/lib/server/catalog/openLibrary';
 import { ARCHIVE_SECTIONS, SECTIONS } from '@/lib/server/catalog/sections';
 import { attempt, str, type SearchParams } from '@/lib/server/pageParams';
+import { findLanguage } from '@/lib/shared/languages';
 import type { Page, WorkCard } from '@/lib/shared/types';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +22,9 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
 const PREVIEW = 6;
 
 export default async function SearchPage({ searchParams }: { searchParams: SearchParams }) {
-  const q = str((await searchParams).q);
+  const sp = await searchParams;
+  const q = str(sp.q);
+  const lang = findLanguage(str(sp.lang))?.code;
   if (!q) {
     return (
       <>
@@ -36,9 +40,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   const lucene = escapeLucene(q);
   const preview = <T,>(p: Page<T>): Page<T> => ({ ...p, results: p.results.slice(0, PREVIEW) });
   const [books, texts, ...others] = await Promise.all([
-    text ? attempt(() => searchWorks({ query: text, pageSize: PREVIEW })) : Promise.resolve(null),
-    attempt(() => searchTexts(lucene, 1, PREVIEW)),
-    ...ARCHIVE_SECTIONS.map((s) => attempt(() => searchSection(s, lucene, 1).then(preview))),
+    text ? attempt(() => searchWorks({ query: text, pageSize: PREVIEW, language: lang })) : Promise.resolve(null),
+    attempt(() => searchTexts(lucene, 1, PREVIEW, lang)),
+    ...ARCHIVE_SECTIONS.map((s) => attempt(() => searchSection(s, lucene, 1, lang).then(preview))),
   ]);
 
   // Order: catalogued books, then every other scan on archive.org, then the archive sections.
@@ -49,7 +53,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
       title: 'Books',
       summary: 'catalogued books',
       total: books.total,
-      href: `/books?q=${encodeURIComponent(q)}`,
+      href: withLang(`/books?q=${encodeURIComponent(q)}`, lang),
       body: (
         <TileGrid>
           {books.results.map((w: WorkCard) => (
@@ -65,7 +69,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
       title: 'More on archive.org',
       summary: 'scans on archive.org',
       total: texts.total,
-      href: `/books?q=${encodeURIComponent(q)}&source=archive`,
+      href: withLang(`/books?q=${encodeURIComponent(q)}&source=archive`, lang),
       body: (
         <TileGrid>
           {texts.results.map((c) => (
@@ -83,7 +87,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
       title: SECTIONS[section].name,
       summary: `in ${SECTIONS[section].name.toLowerCase()}`,
       total: page.total,
-      href: `/${section}?q=${encodeURIComponent(q)}`,
+      href: withLang(`/${section}?q=${encodeURIComponent(q)}`, lang),
       body: (
         <TileGrid>
           {page.results.map((c) => (
@@ -97,13 +101,20 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   return (
     <>
       <div className="mb-12 max-w-3xl">
-        <SearchBox action="/search" placeholder="Search everything" defaultValue={q} size="lg" />
+        <SearchBox action="/search" placeholder="Search everything" defaultValue={q} size="lg" hidden={lang ? { lang } : undefined} />
+        <div className="mt-6">
+          <LanguagePicker current={lang} href={(code) => withLang(`/search?q=${encodeURIComponent(q)}`, code)} />
+        </div>
         <SummaryLine groups={groups} />
       </div>
 
       {groups.length === 0 ? (
         <Empty title={`Nothing found for “${q}”.`}>
-          <p>Try fewer words, a different spelling, or an author’s surname on its own.</p>
+          <p>
+            {lang
+              ? `Nothing in ${findLanguage(lang)?.name}. Try “Any” language, or a different spelling.`
+              : 'Try fewer words, a different spelling, or an author’s surname on its own.'}
+          </p>
         </Empty>
       ) : null}
 
@@ -149,4 +160,8 @@ function SummaryLine({ groups }: { groups: Group[] }) {
       .
     </p>
   );
+}
+
+function withLang(path: string, lang: string | undefined): string {
+  return lang ? `${path}&lang=${lang}` : path;
 }
