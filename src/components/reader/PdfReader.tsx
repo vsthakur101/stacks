@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight, Maximize2, MoveHorizontal, Minus, Plus } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
+import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { ReaderBar, useSaveProgress } from './ReaderChrome';
@@ -14,7 +15,20 @@ const ZOOMS = [0.5, 0.67, 0.8, 1, 1.25, 1.5, 2, 3];
  * ahead into off-screen canvases so turning is instant. pdf.js fetches the file in 1 MB ranges, so a
  * 140 MB magazine opens without downloading all of it.
  */
-export function PdfReader({ file, title, backHref, initialPage }: { file: string; title: string; backHref: string; initialPage: number }) {
+export function PdfReader({
+  file,
+  title,
+  backHref,
+  initialPage,
+  next,
+}: {
+  file: string;
+  title: string;
+  backHref: string;
+  initialPage: number;
+  /** The next volume of the set, when it's in the Library. */
+  next?: { href: string; label: string };
+}) {
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(initialPage);
@@ -202,6 +216,11 @@ export function PdfReader({ file, title, backHref, initialPage }: { file: string
           className="h-10 min-w-0 flex-1 accent-[var(--accent)]"
         />
         <span className="w-24 text-right text-sm tabular-nums text-ink-soft sm:hidden">{total ? `${page} / ${total}` : ''}</span>
+        {next && total && page >= total ? (
+          <Link href={next.href} className="keep-round shrink-0 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:opacity-90">
+            Next volume: {next.label}
+          </Link>
+        ) : null}
         <button type="button" className={btn} onClick={() => go(page + 1)} disabled={!total || page >= total} aria-label="Next page">
           <ChevronRight className="size-5" />
         </button>

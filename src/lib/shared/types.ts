@@ -18,6 +18,8 @@ export interface ItemCard {
   publisher?: string;
   itemCount?: number;
   downloads?: number;
+  /** archive.org's `volume` field, when set. */
+  volume?: string;
   thumbnail: string;
 }
 

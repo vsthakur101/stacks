@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { ReaderBar, useSaveProgress } from './ReaderChrome';
 
@@ -11,6 +12,7 @@ export function TextReader({
   text,
   truncated,
   initialPermille,
+  next,
 }: {
   file: string;
   title: string;
@@ -18,6 +20,7 @@ export function TextReader({
   text: string;
   truncated: boolean;
   initialPermille: number;
+  next?: { href: string; label: string };
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const save = useSaveProgress(file);
@@ -39,6 +42,13 @@ export function TextReader({
       <ReaderBar title={title} backHref={backHref} />
       <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto px-5 py-10">
         <article className="prose-reading mx-auto whitespace-pre-wrap text-ink">{text}</article>
+        {next ? (
+          <p className="mx-auto mt-12 max-w-prose">
+            <Link href={next.href} className="keep-round inline-block rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink hover:opacity-90">
+              Next volume: {next.label}
+            </Link>
+          </p>
+        ) : null}
         {truncated ? (
           <p className="mx-auto mt-10 max-w-prose text-sm text-ink-soft">
             This file is very long; Stacks shows the first part. Use Open in the Library to read all of it.

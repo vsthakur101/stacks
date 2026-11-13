@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { FilterBar, type FilterMenuSpec } from '@/components/FilterBar';
-import { languageMenu, orderMenu } from '@/components/filterMenus';
+import { languageMenu, orderMenu, volumesMenu } from '@/components/filterMenus';
+import { ResultTiles } from '@/components/ResultTiles';
 import { Pager } from '@/components/Pager';
 import { ResultsHeader } from '@/components/ResultsHeader';
 import { SearchBox } from '@/components/SearchBox';
@@ -11,7 +12,7 @@ import { SaveShelfButton } from '@/components/ShelfButtons';
 import { TilesSkeleton } from '@/components/Skeletons';
 import { SpellingsMenu } from '@/components/SpellingsMenu';
 import { Empty, PageHeading, StaleNotice, Unreachable } from '@/components/States';
-import { ItemTile, itemToTray, TileGrid, WorkTile } from '@/components/Tiles';
+import { itemToTray, TileGrid, WorkTile } from '@/components/Tiles';
 import { searchTexts } from '@/lib/server/catalog/archive';
 import { searchWorks } from '@/lib/server/catalog/openLibrary';
 import { SECTIONS } from '@/lib/server/catalog/sections';
@@ -95,6 +96,7 @@ export default async function BooksPage({ searchParams }: { searchParams: Search
           ],
         }
       : orderMenu(state.sort, (s) => view({ sort: s })),
+    ...(source === 'archive' ? [volumesMenu(sp.sets === 'off', (off) => view({ sets: off ? 'off' : undefined }))] : []),
   ];
 
   return (
@@ -258,11 +260,7 @@ async function SearchResults({
           </>
         }
       />
-      <TileGrid>
-        {archive.results.map((c) => (
-          <ItemTile key={c.identifier} card={c} section="books" />
-        ))}
-      </TileGrid>
+      <ResultTiles cards={archive.results} section="books" group={sp.sets !== 'off'} />
       <Pager path="/books" params={sp} page={page} total={archive.total} pageSize={archive.pageSize} />
     </>
   );

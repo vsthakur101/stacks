@@ -36,3 +36,16 @@ export function orderMenu(current: SortKey | undefined, href: (sort?: SortKey) =
     ],
   };
 }
+
+/** Volumes: grouped into sets (default) or each volume separately; an escape hatch if grouping guesses wrong. */
+export function volumesMenu(separate: boolean, href: (separate: boolean) => string): FilterMenuSpec {
+  return {
+    label: 'Volumes',
+    value: separate ? 'Separately' : 'Grouped',
+    active: separate,
+    options: [
+      { key: 'grouped', label: 'Grouped into sets', hint: 'Volumes of one set as a single card', href: href(false), current: !separate },
+      { key: 'separate', label: 'Each volume separately', href: href(true), current: separate },
+    ],
+  };
+}

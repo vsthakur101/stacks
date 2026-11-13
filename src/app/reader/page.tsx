@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { PdfReader } from '@/components/reader/PdfReader';
 import { TextReader } from '@/components/reader/TextReader';
 import { peekItem } from '@/lib/server/catalog/archive';
+import { nextVolumeFile } from '@/lib/server/library/nextVolume';
 import { getProgress } from '@/lib/server/library/progress';
 import { findLibraryFile, itemForFile, titleFromFileName } from '@/lib/server/library/scan';
 import { str, type SearchParams } from '@/lib/server/pageParams';
@@ -25,9 +26,11 @@ export default async function ReaderPage({ searchParams }: { searchParams: Searc
   const title = (item && peekItem(item.identifier)?.title) ?? titleFromFileName(file.name);
   const progress = getProgress(file.relative);
   const backHref = '/library';
+  const nextVol = item ? await nextVolumeFile(root, item.identifier) : null;
+  const next = nextVol ? { href: `/reader?file=${encodeURIComponent(nextVol.relative)}`, label: nextVol.label } : undefined;
 
   if (file.ext === 'pdf') {
-    return <PdfReader file={file.relative} title={title} backHref={backHref} initialPage={progress?.page ?? 1} />;
+    return <PdfReader file={file.relative} title={title} backHref={backHref} initialPage={progress?.page ?? 1} next={next} />;
   }
 
   const handle = await fs.open(file.path, 'r');
@@ -44,6 +47,7 @@ export default async function ReaderPage({ searchParams }: { searchParams: Searc
       text={buf.toString('utf8').replace(/\r\n?/g, '\n').replace(/\n{3,}/g, '\n\n')}
       truncated={file.size > TEXT_LIMIT}
       initialPermille={progress?.page ?? 1}
+      next={next}
     />
   );
 }

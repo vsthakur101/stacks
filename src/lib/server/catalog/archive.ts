@@ -6,7 +6,7 @@ import { archiveThumb, cleanTitle, first, parseDate, realCollections } from './n
 import { SECTIONS, sectionScope } from './sections';
 
 const BASE = 'https://archive.org';
-const FIELDS = ['identifier', 'title', 'date', 'year', 'creator', 'publisher', 'mediatype', 'item_count', 'downloads'];
+const FIELDS = ['identifier', 'title', 'date', 'year', 'creator', 'publisher', 'mediatype', 'item_count', 'downloads', 'volume'];
 
 const searchSchema = z.object({
   response: z.object({
@@ -31,6 +31,7 @@ export function toItemCard(doc: Record<string, unknown>): ItemCard | null {
     publisher: first(doc.publisher),
     itemCount: Number.isFinite(itemCount) && itemCount > 0 ? itemCount : undefined,
     downloads: Number.isFinite(downloads) ? downloads : undefined,
+    volume: first(doc.volume),
     thumbnail: archiveThumb(identifier),
   };
 }
@@ -221,6 +222,7 @@ export interface ItemMetadata {
   creator?: string;
   publisher?: string;
   language?: string;
+  volume?: string;
   description?: unknown;
   subjects: string[];
   collections: string[];
@@ -273,6 +275,7 @@ function toItemMetadata(identifier: string, data: z.infer<typeof metadataSchema>
     creator: first(m.creator),
     publisher: first(m.publisher),
     language: first(m.language),
+    volume: first(m.volume),
     description: m.description,
     subjects: [m.subject].flat().flatMap((s) => (typeof s === 'string' ? s.split(/;\s*/) : [])).filter(Boolean),
     collections,

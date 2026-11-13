@@ -2,12 +2,13 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { FilterBar } from '@/components/FilterBar';
-import { languageMenu, orderMenu } from '@/components/filterMenus';
+import { languageMenu, orderMenu, volumesMenu } from '@/components/filterMenus';
+import { ResultTiles } from '@/components/ResultTiles';
 import { SearchBox } from '@/components/SearchBox';
 import { SpellingsMenu } from '@/components/SpellingsMenu';
 import { LineSkeleton, SectionSkeleton } from '@/components/Skeletons';
 import { Empty, PageHeading } from '@/components/States';
-import { ItemTile, TileGrid, WorkTile } from '@/components/Tiles';
+import { TileGrid, WorkTile } from '@/components/Tiles';
 import { searchSection, searchTexts } from '@/lib/server/catalog/archive';
 import { searchWorks } from '@/lib/server/catalog/openLibrary';
 import { ARCHIVE_SECTIONS, SECTIONS } from '@/lib/server/catalog/sections';
@@ -61,7 +62,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
           hidden={{ ...(lang ? { lang } : {}), ...(state.sort ? { sort: state.sort } : {}) }}
         />
         <FilterBar
-          menus={[languageMenu(lang, (code) => view({ lang: code })), orderMenu(state.sort, (sortKey) => view({ sort: sortKey }))]}
+          menus={[
+            languageMenu(lang, (code) => view({ lang: code })),
+            orderMenu(state.sort, (sortKey) => view({ sort: sortKey })),
+            volumesMenu(sp.sets === 'off', (off) => view({ sets: off ? 'off' : undefined })),
+          ]}
         >
           <Suspense fallback={null}>
             <SpellingsMenu
@@ -136,14 +141,14 @@ function Groups({ sp, state, expanded }: { sp: RawParams; state: SearchState; ex
       </Suspense>
       {groups.map((g) => (
         <Suspense key={g.meta.id} fallback={<SectionSkeleton title={g.meta.title} />}>
-          <Group meta={g.meta} data={g.data} />
+          <Group meta={g.meta} data={g.data} groupSets={sp.sets !== 'off'} />
         </Suspense>
       ))}
     </>
   );
 }
 
-async function Group({ meta, data }: PendingGroup) {
+async function Group({ meta, data, groupSets }: PendingGroup & { groupSets: boolean }) {
   const d = await data;
   if (!d || d.page.total === 0) return null;
   return (
@@ -156,11 +161,15 @@ async function Group({ meta, data }: PendingGroup) {
           </Link>
         ) : null}
       </div>
-      <TileGrid>
-        {d.kind === 'works'
-          ? d.page.results.slice(0, PREVIEW).map((w) => <WorkTile key={w.workId} work={w} />)
-          : d.page.results.slice(0, PREVIEW).map((c) => <ItemTile key={c.identifier} card={c} section={d.section} />)}
-      </TileGrid>
+      {d.kind === 'works' ? (
+        <TileGrid>
+          {d.page.results.slice(0, PREVIEW).map((w) => (
+            <WorkTile key={w.workId} work={w} />
+          ))}
+        </TileGrid>
+      ) : (
+        <ResultTiles cards={d.page.results.slice(0, PREVIEW)} section={d.section} group={groupSets} />
+      )}
     </section>
   );
 }

@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { FilterBar } from '@/components/FilterBar';
-import { languageMenu, orderMenu } from '@/components/filterMenus';
+import { languageMenu, orderMenu, volumesMenu } from '@/components/filterMenus';
+import { ResultTiles, SET_SECTIONS } from '@/components/ResultTiles';
 import { Pager } from '@/components/Pager';
 import { ResultsHeader } from '@/components/ResultsHeader';
 import { SpellingsMenu } from '@/components/SpellingsMenu';
@@ -54,6 +55,9 @@ export default async function SectionPage({ params, searchParams }: { params: Pa
               menus={[
                 languageMenu(state.lang, (code) => hrefWith(`/${section}`, sp, { lang: code })),
                 orderMenu(state.sort, (s) => hrefWith(`/${section}`, sp, { sort: s })),
+                ...(SET_SECTIONS.includes(section)
+                  ? [volumesMenu(sp.sets === 'off', (off) => hrefWith(`/${section}`, sp, { sets: off ? 'off' : undefined }))]
+                  : []),
               ]}
             >
               <Suspense fallback={null}>
@@ -135,11 +139,7 @@ async function Results({ section, sp, state }: { section: SectionId; sp: RawPara
               </>
             }
           />
-          <TileGrid>
-            {results.results.map((c) => (
-              <ItemTile key={c.identifier} card={c} section={section} />
-            ))}
-          </TileGrid>
+          <ResultTiles cards={results.results} section={section} group={sp.sets !== 'off'} />
           <Pager path={path} params={sp} page={state.page} total={results.total} pageSize={results.pageSize} />
         </>
       )}
