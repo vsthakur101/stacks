@@ -64,6 +64,22 @@ export const savedShelves = sqliteTable('saved_shelves', {
   createdAt: integer('created_at').notNull(),
 });
 
+/** Where the owner stopped in each downloaded file (Reader, Continue reading on Home). */
+export const readingProgress = sqliteTable(
+  'reading_progress',
+  {
+    /** Path inside the download folder. */
+    file: text('file').primaryKey(),
+    identifier: text('identifier'),
+    title: text('title').notNull(),
+    /** 1-based page for PDFs; for text, scroll position in thousandths. */
+    page: integer('page').notNull(),
+    total: integer('total').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (t) => [index('idx_reading_progress_updated_at').on(t.updatedAt)],
+);
+
 export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),

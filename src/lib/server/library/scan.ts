@@ -139,3 +139,15 @@ export function scanLibrary(root: string): Promise<LibraryScan> {
 export function invalidateLibraryScan(): void {
   globalForScan.__stacksScan = undefined;
 }
+
+/** A file the Library scan found, by its path inside the download root; null for anything else. */
+export async function findLibraryFile(root: string, relative: string): Promise<LibraryFile | null> {
+  const scan = await scanLibrary(root);
+  return [...scan.others, ...scan.items.flatMap((i) => i.files)].find((f) => f.relative === relative) ?? null;
+}
+
+/** The identifier and title for a file, when it belongs to a Stacks item. */
+export async function itemForFile(root: string, relative: string): Promise<LibraryItem | null> {
+  const scan = await scanLibrary(root);
+  return scan.items.find((i) => i.files.some((f) => f.relative === relative)) ?? null;
+}

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Cover } from '@/components/Cover';
+import path from 'node:path';
 import { FileActions } from '@/components/FileActions';
 import { SelectToggle } from '@/components/SelectToggle';
 import { StaleNotice, Unreachable } from '@/components/States';
@@ -11,6 +12,7 @@ import { archiveThumb, formatDisplayDate, plainText } from '@/lib/server/catalog
 import { SECTIONS } from '@/lib/server/catalog/sections';
 import { sectionOf } from '@/lib/server/catalog/sectionOf';
 import { availability } from '@/lib/server/downloads/formats';
+import { getSettings } from '@/lib/server/settings';
 import { filesFor } from '@/lib/server/downloads/library';
 import { str, type SearchParams } from '@/lib/server/pageParams';
 import { FORMAT_LABELS, isSectionId } from '@/lib/shared/types';
@@ -45,6 +47,14 @@ export default async function ItemPage({ params, searchParams }: { params: Param
   const publication = str(sp.p);
   const formats = [...availability(item.files).entries()];
   const onDisk = await filesFor(identifier);
+  const root = getSettings().downloadRoot;
+  // Our reader opens downloaded PDFs and text; otherwise Read uses archive.org's online viewer.
+  const localRead = onDisk
+    .filter((f) => f.startsWith(path.resolve(root) + path.sep))
+    .map((f) => path.relative(path.resolve(root), f))
+    .sort((a, b) => Number(b.endsWith('.pdf')) - Number(a.endsWith('.pdf')))
+    .find((f) => f.endsWith('.pdf') || f.endsWith('.txt'));
+  const readHref = localRead ? `/reader?file=${encodeURIComponent(localRead)}` : `/read/${identifier}`;
   const description = plainText(item.description);
   const details: [string, string | undefined][] = [
     ['Date', formatDisplayDate(item.date)],
@@ -105,7 +115,7 @@ export default async function ItemPage({ params, searchParams }: { params: Param
             ) : (
               <>
                 <Link
-                  href={`/read/${identifier}`}
+                  href={readHref}
                   className={
                     onDisk.length > 0
                       ? 'rounded-full border border-ink/25 px-6 py-2.5 text-sm text-ink hover:border-accent hover:text-accent'

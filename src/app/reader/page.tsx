@@ -1,0 +1,49 @@
+import type { Metadata } from 'next';
+import fs from 'node:fs/promises';
+import { notFound } from 'next/navigation';
+import { PdfReader } from '@/components/reader/PdfReader';
+import { TextReader } from '@/components/reader/TextReader';
+import { peekItem } from '@/lib/server/catalog/archive';
+import { getProgress } from '@/lib/server/library/progress';
+import { findLibraryFile, itemForFile, titleFromFileName } from '@/lib/server/library/scan';
+import { str, type SearchParams } from '@/lib/server/pageParams';
+import { getSettings } from '@/lib/server/settings';
+
+export const dynamic = 'force-dynamic';
+export const metadata: Metadata = { title: 'Reader' };
+
+const TEXT_LIMIT = 4 * 1024 * 1024;
+
+/** Reads a file from the download folder: PDFs on pdf.js, plain text as reading text. */
+export default async function ReaderPage({ searchParams }: { searchParams: SearchParams }) {
+  const relative = str((await searchParams).file);
+  const root = getSettings().downloadRoot;
+  const file = relative ? await findLibraryFile(root, relative) : null;
+  if (!file || (file.ext !== 'pdf' && file.ext !== 'txt')) notFound();
+
+  const item = await itemForFile(root, file.relative);
+  const title = (item && peekItem(item.identifier)?.title) ?? titleFromFileName(file.name);
+  const progress = getProgress(file.relative);
+  const backHref = '/library';
+
+  if (file.ext === 'pdf') {
+    return <PdfReader file={file.relative} title={title} backHref={backHref} initialPage={progress?.page ?? 1} />;
+  }
+
+  const handle = await fs.open(file.path, 'r');
+  const size = Math.min(file.size, TEXT_LIMIT);
+  const buf = Buffer.alloc(size);
+  await handle.read(buf, 0, size, 0);
+  await handle.close();
+  return (
+    <TextReader
+      file={file.relative}
+      title={title}
+      backHref={backHref}
+      // archive.org's recognised text puts blank lines between most lines; keep paragraph breaks only.
+      text={buf.toString('utf8').replace(/\r\n?/g, '\n').replace(/\n{3,}/g, '\n\n')}
+      truncated={file.size > TEXT_LIMIT}
+      initialPermille={progress?.page ?? 1}
+    />
+  );
+}

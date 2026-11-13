@@ -32,7 +32,7 @@ function NavLink({ href, label, active }: { href: string; label: string; active:
 export function SiteHeader() {
   const pathname = usePathname();
   const active = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
-  if (pathname.startsWith('/read/')) return null;
+  if ((pathname.startsWith('/read/') || pathname === '/reader')) return null;
 
   return (
     <header className="t-header">

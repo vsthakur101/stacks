@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { Cover } from '@/components/Cover';
 import { FileButtons } from '@/components/FileButtons';
@@ -146,7 +147,13 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
   );
 }
 
+/** The file the reader opens for an item: its first PDF, else its first plain-text file. */
+function readable(entry: LibraryEntry) {
+  return entry.files.find((f) => f.ext === 'pdf') ?? entry.files.find((f) => f.ext === 'txt');
+}
+
 function LibraryTile({ entry }: { entry: LibraryEntry }) {
+  const toRead = readable(entry);
   const formats = [...new Set(entry.files.map((f) => f.ext.toUpperCase()).filter(Boolean))].join(', ');
   // With several files, Open shows their folder (the API does the same).
   return (
@@ -159,7 +166,16 @@ function LibraryTile({ entry }: { entry: LibraryEntry }) {
         {entry.files.length > 1 ? `${entry.files.length} files` : formats}
         {entry.files.length > 1 && formats ? ` (${formats})` : ''}, {formatBytesServer(entry.bytes)}
       </p>
-      <div className="mt-1.5">
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-4">
+        {toRead ? (
+          <Link
+            href={`/reader?file=${encodeURIComponent(toRead.relative)}`}
+            className="-my-2 inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-accent hover:underline"
+          >
+            <BookOpen aria-hidden className="size-3.5" />
+            Read
+          </Link>
+        ) : null}
         <FileButtons target={{ identifier: entry.identifier }} multiple={entry.files.length > 1} />
       </div>
     </li>

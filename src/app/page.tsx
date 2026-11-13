@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
+import { ContinueReading } from '@/components/ContinueReading';
 import { SearchBox } from '@/components/SearchBox';
 import { ClearHistoryButton, RemoveShelfButton } from '@/components/ShelfButtons';
 import { SectionSkeleton } from '@/components/Skeletons';
@@ -45,6 +46,9 @@ export default function Home() {
         ) : null}
       </section>
 
+      <Suspense fallback={null}>
+        <ContinueReading />
+      </Suspense>
       {saved.map((shelf) => (
         <Suspense key={shelf.id} fallback={<SectionSkeleton title={shelf.title} />}>
           <SavedShelfRow shelf={shelf} />

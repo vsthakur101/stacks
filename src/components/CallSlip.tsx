@@ -36,7 +36,7 @@ export function CallSlip() {
     if (!open) setStep({ kind: 'list' });
   }, [open]);
 
-  if (!hydrated || pathname.startsWith('/read/')) return null;
+  if (!hydrated || (pathname.startsWith('/read/') || pathname === '/reader')) return null;
   if (items.length === 0 && step.kind !== 'started') return null;
 
   const count = items.length;
