@@ -13,7 +13,7 @@ const base =
 function look(selected: boolean) {
   return selected
     ? 'border-accent bg-accent text-accent-ink'
-    : 'border-ink/25 bg-paper-raised/95 text-ink-soft hover:border-accent hover:text-accent';
+    : 'border-ink/25 bg-raised/95 text-ink-soft hover:border-accent hover:text-accent';
 }
 
 /** Adds/removes a known archive.org item from the call slip. */
@@ -84,7 +84,7 @@ export function WorkSelectToggle({
   }
 
   if (state === 'none') {
-    return <span className={cn('rounded-full bg-paper-raised px-2 py-1 text-xs text-ink-soft', className)}>No free scan</span>;
+    return <span className={cn('rounded-full bg-raised px-2 py-1 text-xs text-ink-soft', className)}>No free scan</span>;
   }
   const button = (
     <button

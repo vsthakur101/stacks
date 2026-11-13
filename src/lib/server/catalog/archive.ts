@@ -74,6 +74,19 @@ export function searchSection(section: SectionId, text: string, page: number): P
   });
 }
 
+/** Lucene for "every freely downloadable text on archive.org matching user text". `text` must be escaped. */
+export function textsQuery(text: string): string {
+  return `(${text}) AND mediatype:texts AND NOT collection:(inlibrary OR printdisabled) AND NOT access-restricted-item:true`;
+}
+
+/**
+ * All free scans on archive.org, not just those Open Library has catalogued. Many Indic texts
+ * (e.g. Geeta Press volumes) exist only here. Relevance order.
+ */
+export function searchTexts(text: string, page: number, pageSize = 24): Promise<Page<ItemCard>> {
+  return searchArchive({ query: textsQuery(text), page, pageSize });
+}
+
 /** The browse unit of a section: its publications (child collections), most-used first. */
 export async function listPublications(section: SectionId, page: number, text?: string): Promise<Page<ItemCard>> {
   const cfg = SECTIONS[section];

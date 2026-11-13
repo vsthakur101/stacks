@@ -60,9 +60,16 @@ export async function searchWorks(opts: WorkSearchOptions): Promise<Page<WorkCar
   return { total: data.numFound, page, pageSize, stale, results: data.docs.map(toWorkCard) };
 }
 
-/** Sanitizes user text for OL's Solr: keep words, drop syntax. */
+/**
+ * Sanitizes user text for OL's Solr: keep words, drop syntax.
+ * \p{M} matters: Devanagari vowel signs and viramas are combining marks (गीता = ग + ी + त + ा).
+ */
 export function olText(input: string): string {
-  return input.replace(/[^\p{L}\p{N}\s'’-]/gu, ' ').replace(/\s+/g, ' ').trim();
+  return input
+    .normalize('NFC')
+    .replace(/[^\p{L}\p{M}\p{N}\s'’-]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 export function isOlId(id: string, kind: 'W' | 'A'): boolean {
@@ -146,7 +153,9 @@ export function subjectSlug(name: string): string {
   return name
     .toLowerCase()
     .normalize('NFKD')
-    .replace(/[^\p{L}\p{N}]+/gu, '_')
+    .replace(/[\u0300-\u036f]/g, '') // drop Latin accents only; Indic marks are part of the word
+    .normalize('NFC')
+    .replace(/[^\p{L}\p{M}\p{N}]+/gu, '_')
     .replace(/^_+|_+$/g, '');
 }
 

@@ -37,7 +37,7 @@ export function Pager({
         <span key={p} className="flex items-center">
           {i > 0 && p - (sorted[i - 1] ?? p) > 1 ? <span className="px-1 text-ink-faint">…</span> : null}
           {p === page ? (
-            <span aria-current="page" className="min-w-8 rounded-full bg-ink px-2.5 py-1 text-center text-paper">
+            <span aria-current="page" className="min-w-8 rounded-full bg-accent-wash px-2.5 py-1 text-center text-ink">
               {p}
             </span>
           ) : (

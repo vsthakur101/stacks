@@ -1,64 +1,66 @@
 @import 'tailwindcss';
 
 /*
- * Stacks design tokens.
- * Paper: cool archival board, not cream. Ink: blue-black. One accent: bookbinding buckram green,
- * reserved for selection and primary actions. The call slip (selection tray) is the one bold element.
+ * Stacks — "Pothi".
+ * Colours are named for the pigments of Indian manuscripts: china-clay paper, lamp-black ink tinted
+ * with indigo, sindoor vermilion as the single accent, orpiment for one tiny badge, gerua in the rules.
+ * Contrast (APCA): body ink Lc 96 light / 92 dark; secondary 81 / 76.
+ * Motif: the double rule of Indian book covers — header base, fallback covers, the call slip. Nowhere else.
  */
 :root {
-  --paper: #f2f3ef;
-  --paper-raised: #fafaf7;
-  --ink: #1c2431;
-  --ink-soft: #545d6b;
-  --ink-faint: #8a919b;
-  --rule: #d8dbd4;
-  --accent: #2e5b4f;
-  --accent-ink: #ffffff;
-  --accent-wash: #dfe9e4;
-  --slip: #fbf9f1;
-  --slip-line: #cfd9e3;
-  --danger: #9b2c2c;
-  --cover-fallback: #e3e6df;
+  --paper: #f5f3ee;
+  --raised: #fbfaf7;
+  --ink: #1a2036;
+  --ink-soft: #4a5066;
+  --ink-faint: #7a7e8e;
+  --rule: #dad4c7;
+  --vermilion: #b5321c;
+  --on-vermilion: #ffffff;
+  --vermilion-wash: #f6e4dd;
+  --indigo: #2c3a7a;
+  --indigo-deep: #1f2a5c;
+  --orpiment: #c8901a;
+  --lac: #8e1f3a;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #14181e;
-    --paper-raised: #1b2028;
-    --ink: #e5e7e2;
-    --ink-soft: #a9afb7;
-    --ink-faint: #737a84;
-    --rule: #2c323b;
-    --accent: #7fb3a3;
-    --accent-ink: #0f1a17;
-    --accent-wash: #1f2f2a;
-    --slip: #232821;
-    --slip-line: #34404a;
-    --danger: #e08a8a;
-    --cover-fallback: #222831;
+    --paper: #11131b;
+    --raised: #191c27;
+    --ink: #ece8df;
+    --ink-soft: #d2cdc3;
+    --ink-faint: #a29e95;
+    --rule: #2a2d3a;
+    --vermilion: #f79a80;
+    --on-vermilion: #11131b;
+    --vermilion-wash: #2b1d1d;
+    --indigo: #b5bee6;
+    --indigo-deep: #222a4d;
+    --orpiment: #e2b04a;
+    --lac: #f2a0b2;
     color-scheme: dark;
   }
 }
 
 @theme inline {
   --color-paper: var(--paper);
-  --color-paper-raised: var(--paper-raised);
+  --color-raised: var(--raised);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-ink-faint: var(--ink-faint);
   --color-rule: var(--rule);
-  --color-accent: var(--accent);
-  --color-accent-ink: var(--accent-ink);
-  --color-accent-wash: var(--accent-wash);
-  --color-slip: var(--slip);
-  --color-slip-line: var(--slip-line);
-  --color-danger: var(--danger);
-  --color-cover-fallback: var(--cover-fallback);
-  --font-serif: var(--font-spectral), Georgia, serif;
-  --font-sans: var(--font-public-sans), system-ui, sans-serif;
+  --color-accent: var(--vermilion);
+  --color-accent-ink: var(--on-vermilion);
+  --color-accent-wash: var(--vermilion-wash);
+  --color-indigo: var(--indigo);
+  --color-indigo-deep: var(--indigo-deep);
+  --color-orpiment: var(--orpiment);
+  --color-danger: var(--lac);
+  --font-serif: var(--font-tiro), 'Tiro Devanagari Hindi', Georgia, serif;
+  --font-sans: var(--font-anek), 'Anek Devanagari', system-ui, sans-serif;
 
-  /* Type scale: a 1.25 ratio from a 16px base. */
+  /* 1.25 scale from 16px. */
   --text-xs: 0.8rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
@@ -67,6 +69,7 @@
   --text-2xl: 1.953rem;
   --text-3xl: 2.441rem;
   --text-4xl: 3.052rem;
+  --text-5xl: 3.815rem;
 }
 
 html {
@@ -74,64 +77,90 @@ html {
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  font-kerning: normal;
 }
 
 body {
   background: var(--paper);
   font-family: var(--font-sans);
+  font-variation-settings: 'wdth' 100;
   line-height: 1.5;
 }
 
+/* Devanagari matras sit above the cap line; Latin-tight leading clips them. */
+h1,
+h2,
+h3,
+.font-serif {
+  line-height: 1.25;
+}
+
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--vermilion);
   outline-offset: 2px;
   border-radius: 2px;
 }
 
 ::selection {
-  background: var(--accent-wash);
+  background: var(--vermilion-wash);
 }
 
-/* Reading text: Spectral wants a little more leading than sans. */
 .prose-reading {
   font-family: var(--font-serif);
   font-size: 1.0625rem;
-  line-height: 1.7;
+  line-height: 1.75;
   max-width: 66ch;
 }
 .prose-reading p + p {
   margin-top: 0.9em;
 }
 
-/* The call slip: ruled lines like a library request slip. */
+/* The double rule. */
+.rule-double {
+  border-color: var(--rule);
+  border-style: double;
+}
+
+/* Inset double frame for fallback covers: two hairlines, like a pothi border. */
+.pothi-frame {
+  box-shadow:
+    inset 0 0 0 6px var(--indigo-deep),
+    inset 0 0 0 7px color-mix(in oklab, var(--orpiment) 70%, transparent),
+    inset 0 0 0 10px var(--indigo-deep),
+    inset 0 0 0 11px color-mix(in oklab, var(--orpiment) 45%, transparent);
+}
+
+/* Ruled lines inside the open slip. */
 .slip-ruled {
-  background-color: var(--slip);
+  background-color: var(--raised);
   background-image: repeating-linear-gradient(
     to bottom,
     transparent 0,
     transparent calc(3.5rem - 1px),
-    var(--slip-line) calc(3.5rem - 1px),
-    var(--slip-line) 3.5rem
+    var(--rule) calc(3.5rem - 1px),
+    var(--rule) 3.5rem
   );
 }
-.slip-perforation {
-  background-image: radial-gradient(circle at 6px 0, var(--paper) 4px, transparent 4.5px);
-  background-size: 12px 8px;
-  background-repeat: repeat-x;
-}
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+/* A shelf is one row that scrolls sideways; about seven covers show on a wide screen. */
+.shelf {
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: clamp(140px, calc((100% - 6 * 1.5rem) / 7), 230px);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule) transparent;
+  padding-bottom: 1rem;
+}
+.shelf > * {
+  scroll-snap-align: start;
 }
 
 @keyframes slip-in {
   from {
-    transform: translateY(12px);
+    transform: translateX(16px);
     opacity: 0;
   }
   to {
@@ -142,5 +171,14 @@ body {
 @keyframes fade {
   from {
     opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

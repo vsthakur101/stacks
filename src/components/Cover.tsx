@@ -13,21 +13,21 @@ interface CoverProps {
 }
 
 /**
- * A cover or first-page thumbnail. When there's no image (or it fails / is archive.org's
- * "not found" placeholder), we set the title in type instead of showing a broken box.
+ * A cover or first-page thumbnail. Without an image we print a cover the way Indian presses did:
+ * an indigo field, an inset double frame, the title centred in the book face.
  */
 export function Cover({ src, title, subtitle, shape = 'book', className, eager }: CoverProps) {
   const [failed, setFailed] = useState(!src);
   return (
     <div
       className={cn(
-        'relative overflow-hidden bg-cover-fallback ring-1 ring-rule',
+        'relative overflow-hidden bg-indigo-deep shadow-[0_1px_2px_rgb(0_0_0/0.12),0_6px_16px_-10px_rgb(0_0_0/0.35)]',
         shape === 'book' ? 'aspect-[2/3]' : 'aspect-[3/4]',
         className,
       )}
     >
       {!failed && src ? (
-        // eslint-disable-next-line @next/next/no-img-element -- remote thumbnails, no optimization wanted
+        // eslint-disable-next-line @next/next/no-img-element -- remote thumbnails; no optimisation wanted
         <img
           src={src}
           alt=""
@@ -36,15 +36,15 @@ export function Cover({ src, title, subtitle, shape = 'book', className, eager }
           className="absolute inset-0 h-full w-full object-cover"
           onError={() => setFailed(true)}
           onLoad={(e) => {
-            // archive.org serves a 180×? "notfound.png" for items without a thumbnail.
-            const img = e.currentTarget;
-            if (img.currentSrc.includes('notfound')) setFailed(true);
+            // archive.org redirects missing thumbnails to a "notfound" placeholder.
+            if (e.currentTarget.currentSrc.includes('notfound')) setFailed(true);
           }}
         />
       ) : (
-        <div className="absolute inset-0 flex flex-col justify-between p-[9%]">
-          <span className="line-clamp-5 font-serif text-[clamp(0.8rem,1.4vw,1.05rem)] leading-snug text-ink">{title}</span>
-          {subtitle ? <span className="line-clamp-2 text-xs text-ink-soft">{subtitle}</span> : null}
+        <div className="pothi-frame absolute inset-0 flex flex-col items-center justify-center gap-3 px-[16%] pt-[22%] pb-[14%] text-center">
+          <span className="line-clamp-5 font-serif text-[clamp(0.85rem,1.25vw,1.1rem)] text-[#efe7d2]">{title}</span>
+          <span aria-hidden className="h-px w-6 bg-[#c8901a]/70" />
+          {subtitle ? <span className="line-clamp-2 text-[0.7rem] text-[#efe7d2]/70">{subtitle}</span> : null}
         </div>
       )}
     </div>

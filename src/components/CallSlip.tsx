@@ -44,27 +44,30 @@ export function CallSlip() {
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
+        {/* Collapsed, the slip is a palm leaf: long, round-ended, a binding hole at one end. */}
         <button
           type="button"
-          className="fixed right-4 bottom-4 z-30 flex items-baseline gap-3 border border-ink/15 bg-slip px-5 py-3 text-left shadow-[0_1px_0_var(--rule),0_8px_24px_-12px_rgb(0_0_0/0.35)] sm:right-8 sm:bottom-8"
+          className="rule-double fixed right-4 bottom-4 z-30 flex items-center gap-3.5 rounded-full border-[3px] bg-raised py-2.5 pr-3 pl-4 text-left shadow-[0_10px_30px_-14px_rgb(0_0_0/0.45)] transition-transform hover:-translate-y-0.5 sm:right-8 sm:bottom-8"
         >
+          <span aria-hidden className="size-2.5 rounded-full border border-ink/40 bg-paper" />
           <span className="font-serif text-lg italic text-ink">Call slip</span>
-          <span className="text-sm text-ink-soft">
-            {count} {count === 1 ? 'item' : 'items'}
+          <span className="min-w-7 rounded-full bg-orpiment px-2 py-0.5 text-center text-sm font-medium text-[#1a2036] tabular-nums">
+            <span className="sr-only">, </span>
+            {count}
+            <span className="sr-only"> {count === 1 ? 'item' : 'items'}</span>
           </span>
         </button>
       </Dialog.Trigger>
 
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-ink/25 data-[state=open]:animate-[fade_150ms_ease-out]" />
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-[#0b0d14]/40 data-[state=open]:animate-[fade_150ms_ease-out]" />
         <Dialog.Content
-          className="fixed top-0 right-0 bottom-0 z-50 flex w-full max-w-[420px] flex-col bg-slip text-ink shadow-2xl focus:outline-none data-[state=open]:animate-[slip-in_220ms_cubic-bezier(.2,.8,.2,1)]"
+          className="rule-double fixed top-0 right-0 bottom-0 z-50 flex w-full max-w-[440px] flex-col border-l-[3px] bg-raised text-ink shadow-2xl focus:outline-none data-[state=open]:animate-[slip-in_220ms_cubic-bezier(.2,.8,.2,1)]"
           aria-describedby={undefined}
         >
-          <div className="slip-perforation h-2 w-full" aria-hidden />
-          <div className="flex items-start justify-between px-7 pt-5 pb-4">
+          <div className="flex items-start justify-between px-7 pt-7 pb-5">
             <div>
-              <Dialog.Title className="font-serif text-2xl italic">Call slip</Dialog.Title>
+              <Dialog.Title className="font-serif text-[1.75rem] italic">Call slip</Dialog.Title>
               <p className="mt-1 text-sm text-ink-soft">
                 {step.kind === 'format'
                   ? 'Choose one format for everything on the slip.'
@@ -89,11 +92,11 @@ export function CallSlip() {
 
           {step.kind === 'list' ? (
             <>
-              <ol className="slip-ruled flex-1 overflow-y-auto border-t border-slip-line">
+              <ol className="slip-ruled flex-1 overflow-y-auto border-t border-rule">
                 {items.map((item) => (
                   <li key={item.identifier} className="flex h-14 items-center gap-3 px-7">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-serif text-[1.05rem] leading-tight">{item.title}</p>
+                      <p className="truncate font-serif text-[1.05rem]">{item.title}</p>
                       <p className="truncate text-xs text-ink-faint">
                         {SECTION_LABEL[item.section]}
                         {item.publication ? `, ${item.publication}` : ''}
@@ -111,7 +114,7 @@ export function CallSlip() {
                   </li>
                 ))}
               </ol>
-              <div className="flex items-center justify-between gap-4 border-t border-slip-line px-7 py-5">
+              <div className="flex items-center justify-between gap-4 border-t border-rule px-7 py-5">
                 <button type="button" onClick={clear} className="text-sm text-ink-soft hover:text-danger">
                   Clear slip
                 </button>
@@ -127,7 +130,7 @@ export function CallSlip() {
           ) : step.kind === 'format' ? (
             <FormatStep onBack={() => setStep({ kind: 'list' })} onStarted={(n) => setStep({ kind: 'started', count: n })} />
           ) : (
-            <div className="flex-1 border-t border-slip-line px-7 py-8">
+            <div className="flex-1 border-t border-rule px-7 py-8">
               <p className="font-serif text-xl">
                 {step.count} {step.count === 1 ? 'item is' : 'items are'} downloading.
               </p>
@@ -192,7 +195,7 @@ function FormatStep({ onBack, onStarted }: { onBack: () => void; onStarted: (cou
   const downloadable = formats ? formats.total - formats.restricted.length - formats.unavailable.length : 0;
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto border-t border-slip-line">
+    <div className="flex flex-1 flex-col overflow-y-auto border-t border-rule">
       <div className="flex-1 px-7 py-6">
         {loadError ? (
           <p className="text-danger">Couldn’t check formats: {loadError}</p>
@@ -214,7 +217,7 @@ function FormatStep({ onBack, onStarted }: { onBack: () => void; onStarted: (cou
                   <label
                     key={f.format}
                     className={cn(
-                      'flex cursor-pointer items-center gap-4 border-b border-slip-line py-3.5',
+                      'flex cursor-pointer items-center gap-4 border-b border-rule py-3.5',
                       none && 'cursor-not-allowed opacity-45',
                     )}
                   >
@@ -240,7 +243,7 @@ function FormatStep({ onBack, onStarted }: { onBack: () => void; onStarted: (cou
               <select
                 value={fallback}
                 onChange={(e) => setFallback(e.target.value as Fallback)}
-                className="rounded-md border border-ink/20 bg-paper-raised px-2 py-1.5 text-ink"
+                className="rounded-md border border-ink/20 bg-raised px-2 py-1.5 text-ink"
               >
                 <option value="skip">Skip it</option>
                 <option value="pdf">Use PDF</option>
@@ -264,7 +267,7 @@ function FormatStep({ onBack, onStarted }: { onBack: () => void; onStarted: (cou
         )}
         {submitError ? <p className="mt-4 text-sm text-danger">{submitError}</p> : null}
       </div>
-      <div className="flex items-center justify-between gap-4 border-t border-slip-line px-7 py-5">
+      <div className="flex items-center justify-between gap-4 border-t border-rule px-7 py-5">
         <button type="button" onClick={onBack} className="text-sm text-ink-soft hover:text-ink">
           Back to slip
         </button>

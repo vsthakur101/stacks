@@ -51,7 +51,7 @@ export function SettingsForm({ initial }: { initial: Settings }) {
           id="concurrency"
           value={value.concurrency}
           onChange={(e) => setValue({ ...value, concurrency: Number(e.target.value) })}
-          className="mt-3 rounded-md border border-ink/20 bg-paper-raised px-3 py-2 text-ink"
+          className="mt-3 rounded-md border border-ink/20 bg-raised px-3 py-2 text-ink"
         >
           {[1, 2, 3, 4, 5, 6].map((n) => (
             <option key={n} value={n}>

@@ -13,53 +13,48 @@ const SECTIONS = [
   { href: '/manuscripts', label: 'Manuscripts' },
 ];
 
+function NavLink({ href, label, active }: { href: string; label: string; active: boolean }) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'relative shrink-0 py-2 text-[0.95rem] transition-colors',
+        'after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-accent after:transition-transform',
+        active ? 'text-ink after:scale-x-100' : 'text-ink-soft after:scale-x-0 hover:text-ink',
+      )}
+    >
+      {label}
+    </Link>
+  );
+}
+
 export function SiteHeader() {
   const pathname = usePathname();
   const active = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   if (pathname.startsWith('/read/')) return null;
 
   return (
-    <header className="border-b border-rule">
-      <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-x-10 gap-y-2 px-4 py-4 sm:px-8">
-        <Link href="/" className="font-serif text-2xl italic tracking-tight text-ink">
+    <header className="rule-double border-b-[3px]">
+      <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-12 gap-y-1 px-4 pt-4 sm:px-8 lg:px-12">
+        <Link href="/" className="pb-3 font-serif text-[1.75rem] italic leading-none text-ink">
           Stacks
         </Link>
-        <nav aria-label="Sections" className="-mx-1 order-3 flex w-full gap-1 overflow-x-auto sm:order-none sm:w-auto">
+        <nav aria-label="Sections" className="order-3 -mb-px flex w-full gap-7 overflow-x-auto [scrollbar-width:none] sm:order-none sm:w-auto [&::-webkit-scrollbar]:hidden">
           {SECTIONS.map((s) => (
-            <Link
-              key={s.href}
-              href={s.href}
-              aria-current={active(s.href) ? 'page' : undefined}
-              className={cn(
-                'shrink-0 rounded-full px-3 py-1.5 text-sm transition-colors',
-                active(s.href) ? 'bg-ink text-paper' : 'text-ink-soft hover:text-ink',
-              )}
-            >
-              {s.label}
-            </Link>
+            <NavLink key={s.href} href={s.href} label={s.label} active={active(s.href)} />
           ))}
         </nav>
-        <div className="ml-auto flex items-center gap-1 text-sm">
-          <Link
-            href="/search"
-            aria-current={active('/search') ? 'page' : undefined}
-            className={cn('rounded-full px-3 py-1.5', active('/search') ? 'text-ink' : 'text-ink-soft hover:text-ink')}
-          >
-            Search
-          </Link>
-          <Link
-            href="/downloads"
-            aria-current={active('/downloads') ? 'page' : undefined}
-            className={cn('rounded-full px-3 py-1.5', active('/downloads') ? 'text-ink' : 'text-ink-soft hover:text-ink')}
-          >
-            Downloads
-          </Link>
+        <div className="-mb-px ml-auto flex items-center gap-6">
+          <NavLink href="/search" label="Search" active={active('/search')} />
+          <NavLink href="/downloads" label="Downloads" active={active('/downloads')} />
           <Link
             href="/settings"
             aria-label="Settings"
-            className={cn('rounded-full p-2', active('/settings') ? 'text-ink' : 'text-ink-soft hover:text-ink')}
+            aria-current={active('/settings') ? 'page' : undefined}
+            className={cn('py-2', active('/settings') ? 'text-accent' : 'text-ink-soft hover:text-ink')}
           >
-            <Settings className="size-4" />
+            <Settings className="size-[1.05rem]" />
           </Link>
         </div>
       </div>

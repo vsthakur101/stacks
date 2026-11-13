@@ -10,12 +10,12 @@ export const dynamic = 'force-dynamic';
 type Params = Promise<{ slug: string }>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
-  return { title: subjectName((await params).slug) };
+  return { title: subjectName(decodeURIComponent((await params).slug)) };
 }
 
 export default async function SubjectPage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
-  const { slug } = await params;
-  if (!/^[\p{L}\p{N}_]{1,80}$/u.test(slug)) notFound();
+  const slug = decodeURIComponent((await params).slug).normalize('NFC');
+  if (!/^[\p{L}\p{M}\p{N}_]{1,80}$/u.test(slug)) notFound();
   const page = pageNum((await searchParams).page);
   const works = await attempt(() => searchWorks({ query: `subject_key:${slug}`, page, sort: 'editions' }));
 
