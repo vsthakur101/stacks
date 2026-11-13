@@ -154,7 +154,7 @@ export async function getAuthor(authorId: string): Promise<AuthorDetail | null> 
     name: data.name ?? data.personal_name ?? 'Unknown author',
     bio: plainText(data.bio),
     lifespan,
-    photo: photoId ? `https://covers.openlibrary.org/a/id/${photoId}-M.jpg` : undefined,
+    photo: photoId ? `/cover/ola/${photoId}-M` : undefined,
   };
 }
 

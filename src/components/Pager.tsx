@@ -51,7 +51,8 @@ export function Pager({
         </span>
       ))}
       {page < last ? (
-        <Link href={href(page + 1)} className="ml-3 inline-flex min-h-10 items-center text-ink-soft hover:text-accent">
+        // Fully prefetched once the pager scrolls into view, so the next page is ready before the click.
+        <Link href={href(page + 1)} prefetch className="ml-3 inline-flex min-h-10 items-center text-ink-soft hover:text-accent">
           Next
         </Link>
       ) : null}

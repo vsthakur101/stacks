@@ -16,7 +16,12 @@ export const trayItemSchema = z.object({
     .string()
     .regex(/^\d{4}(-\d{2}(-\d{2})?)?$/)
     .optional(),
-  thumbnail: z.string().url().optional(),
+  // Local cover-cache paths (/cover/...) or, for selections saved before the cache, full URLs.
+  thumbnail: z
+    .string()
+    .max(600)
+    .refine((t) => t.startsWith('/cover/') || /^https:\/\//.test(t), 'Invalid thumbnail')
+    .optional(),
 });
 
 export const createDownloadSchema = z.object({

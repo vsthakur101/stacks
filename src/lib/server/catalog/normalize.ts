@@ -102,9 +102,10 @@ export function escapeLucene(input: string): string {
 }
 
 export function archiveThumb(identifier: string): string {
-  return `https://archive.org/services/img/${encodeURIComponent(identifier)}`;
+  // Served from the local cover cache (src/lib/server/covers.ts).
+  return `/cover/ia/${encodeURIComponent(identifier)}`;
 }
 
 export function olCover(coverId: number | undefined, size: 'S' | 'M' | 'L' = 'M'): string | undefined {
-  return coverId && coverId > 0 ? `https://covers.openlibrary.org/b/id/${coverId}-${size}.jpg` : undefined;
+  return coverId && coverId > 0 ? `/cover/ol/${coverId}-${size}` : undefined;
 }
