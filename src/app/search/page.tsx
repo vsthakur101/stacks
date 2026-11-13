@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { LanguagePicker } from '@/components/LanguagePicker';
+import { FilterBar } from '@/components/FilterBar';
+import { languageMenu, orderMenu } from '@/components/filterMenus';
 import { SearchBox } from '@/components/SearchBox';
+import { SpellingsMenu } from '@/components/SpellingsMenu';
 import { LineSkeleton, SectionSkeleton } from '@/components/Skeletons';
-import { SortPicker } from '@/components/SortPicker';
-import { SpellingChips } from '@/components/SpellingChips';
 import { Empty, PageHeading } from '@/components/States';
 import { ItemTile, TileGrid, WorkTile } from '@/components/Tiles';
 import { searchSection, searchTexts } from '@/lib/server/catalog/archive';
@@ -52,7 +52,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
 
   return (
     <>
-      <div className="mb-12 max-w-3xl">
+      <div className="mb-10 max-w-3xl space-y-4">
         <SearchBox
           action="/search"
           placeholder="Search everything"
@@ -60,31 +60,23 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
           size="lg"
           hidden={{ ...(lang ? { lang } : {}), ...(state.sort ? { sort: state.sort } : {}) }}
         />
-        <Suspense fallback={<div className="mt-3 h-7" />}>
-          <Chips expanded={expanded} state={state} sp={sp} />
-        </Suspense>
-        <div className="mt-6 space-y-3">
-          <LanguagePicker current={lang} href={(code) => view({ lang: code })} />
-          <SortPicker current={state.sort} href={(sortKey) => view({ sort: sortKey })} />
-        </div>
+        <FilterBar
+          menus={[languageMenu(lang, (code) => view({ lang: code })), orderMenu(state.sort, (sortKey) => view({ sort: sortKey }))]}
+        >
+          <Suspense fallback={null}>
+            <SpellingsMenu
+              expanded={expanded}
+              excluded={state.excluded}
+              exact={state.exact}
+              removeHref={(v) => view({ x: [...state.excluded, v] })}
+              resetHref={view({ x: undefined })}
+              exactHref={(on) => view({ exact: on ? '1' : undefined, x: undefined })}
+            />
+          </Suspense>
+        </FilterBar>
       </div>
       <Groups sp={sp} state={state} expanded={expanded} />
     </>
-  );
-}
-
-async function Chips({ expanded, state, sp }: { expanded: Promise<ExpandedQuery>; state: SearchState; sp: RawParams }) {
-  const e = await expanded;
-  const view = (changes: Record<string, string | string[] | undefined>) => hrefWith('/search', sp, changes);
-  return (
-    <SpellingChips
-      added={e.added}
-      excluded={state.excluded}
-      exact={state.exact}
-      removeHref={(v) => view({ x: [...state.excluded, v] })}
-      resetHref={view({ x: undefined })}
-      exactHref={(on) => view({ exact: on ? '1' : undefined, x: undefined })}
-    />
   );
 }
 
@@ -139,7 +131,7 @@ function Groups({ sp, state, expanded }: { sp: RawParams; state: SearchState; ex
 
   return (
     <>
-      <Suspense fallback={<LineSkeleton className="-mt-6 mb-10 w-2/3" />}>
+      <Suspense fallback={<LineSkeleton className="mb-8 w-2/3" />}>
         <Summary groups={groups} q={state.q!} lang={lang} />
       </Suspense>
       {groups.map((g) => (
@@ -155,9 +147,9 @@ async function Group({ meta, data }: PendingGroup) {
   const d = await data;
   if (!d || d.page.total === 0) return null;
   return (
-    <section id={meta.id} className="scroll-mt-8 border-t border-rule pt-10 pb-14">
+    <section id={meta.id} className="t-section scroll-mt-8">
       <div className="mb-8 flex items-baseline justify-between gap-4">
-        <h2 className="font-serif text-2xl text-ink">{meta.title}</h2>
+        <h2 className="font-display text-2xl text-ink">{meta.title}</h2>
         {d.page.total > PREVIEW ? (
           <Link href={meta.href} className="shrink-0 text-sm text-ink-soft underline-offset-4 hover:text-accent hover:underline">
             See all {d.page.total.toLocaleString('en')}
@@ -189,7 +181,7 @@ async function Summary({ groups, q, lang }: { groups: PendingGroup[]; q: string;
     );
   }
   return (
-    <p className="-mt-6 mb-10 text-ink-soft">
+    <p className="mb-8 text-ink-soft">
       {found.map((g, i) => (
         <span key={g.meta.id}>
           {i > 0 ? (i === found.length - 1 ? ' and ' : ', ') : 'Found '}

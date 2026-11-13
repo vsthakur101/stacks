@@ -27,7 +27,7 @@ export function SettingsForm({ initial }: { initial: Settings }) {
   return (
     <form onSubmit={save} className="max-w-xl space-y-10">
       <div>
-        <label htmlFor="root" className="block font-serif text-xl text-ink">
+        <label htmlFor="root" className="block font-title text-xl text-ink">
           Download folder
         </label>
         <p className="mt-1 text-sm text-ink-soft">
@@ -43,7 +43,7 @@ export function SettingsForm({ initial }: { initial: Settings }) {
       </div>
 
       <div>
-        <label htmlFor="concurrency" className="block font-serif text-xl text-ink">
+        <label htmlFor="concurrency" className="block font-title text-xl text-ink">
           Files at once
         </label>
         <p className="mt-1 text-sm text-ink-soft">More is faster but heavier on archive.org. Three is a polite default.</p>

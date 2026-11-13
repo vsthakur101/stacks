@@ -12,7 +12,7 @@ export function StaleNotice({ stale }: { stale: boolean }) {
 export function Empty({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
     <div className="max-w-prose py-16">
-      <p className="font-serif text-xl text-ink">{title}</p>
+      <p className="font-title text-xl text-ink">{title}</p>
       {children ? <div className="mt-2 text-ink-soft">{children}</div> : null}
     </div>
   );
@@ -34,10 +34,12 @@ export function Unreachable({ what }: { what: string }) {
 
 export function PageHeading({ title, lede, children }: { title: string; lede?: React.ReactNode; children?: React.ReactNode }) {
   return (
-    <header className="mb-10 max-w-3xl">
-      <h1 className="font-serif text-3xl leading-tight text-ink sm:text-4xl">{title}</h1>
-      {lede ? <p className="mt-3 text-lg text-ink-soft">{lede}</p> : null}
-      {children}
+    <header className="t-pagehead mb-10">
+      <div className="max-w-3xl">
+        <h1 className="font-display text-4xl text-ink sm:text-5xl">{title}</h1>
+        {lede ? <p className="mt-3 text-lg text-ink-soft">{lede}</p> : null}
+        {children}
+      </div>
     </header>
   );
 }

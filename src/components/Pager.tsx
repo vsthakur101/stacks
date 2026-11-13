@@ -32,7 +32,7 @@ export function Pager({
   return (
     <nav aria-label="Pages" className="mt-14 flex flex-wrap items-center gap-1 text-sm">
       {page > 1 ? (
-        <Link href={href(page - 1)} className="mr-3 text-ink-soft hover:text-accent">
+        <Link href={href(page - 1)} className="mr-3 inline-flex min-h-10 items-center text-ink-soft hover:text-accent">
           Previous
         </Link>
       ) : null}
@@ -40,18 +40,18 @@ export function Pager({
         <span key={p} className="flex items-center">
           {i > 0 && p - (sorted[i - 1] ?? p) > 1 ? <span className="px-1 text-ink-faint">…</span> : null}
           {p === page ? (
-            <span aria-current="page" className="min-w-8 rounded-full bg-accent-wash px-2.5 py-1 text-center text-ink">
+            <span aria-current="page" className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-full bg-accent-wash px-3 text-ink">
               {p}
             </span>
           ) : (
-            <Link href={href(p)} className="min-w-8 rounded-full px-2.5 py-1 text-center text-ink-soft hover:text-accent">
+            <Link href={href(p)} className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-full px-3 text-ink-soft hover:text-accent">
               {p}
             </Link>
           )}
         </span>
       ))}
       {page < last ? (
-        <Link href={href(page + 1)} className="ml-3 text-ink-soft hover:text-accent">
+        <Link href={href(page + 1)} className="ml-3 inline-flex min-h-10 items-center text-ink-soft hover:text-accent">
           Next
         </Link>
       ) : null}

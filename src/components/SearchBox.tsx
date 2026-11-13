@@ -35,7 +35,7 @@ export function SearchBox({
         autoComplete="off"
         className={cn(
           'w-full border-b-2 border-ink/80 bg-transparent pr-12 text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none',
-          size === 'lg' ? 'py-3 font-serif text-2xl sm:text-3xl' : 'py-2 text-lg',
+          size === 'lg' ? 'py-3 font-display text-2xl sm:text-3xl' : 'py-2 text-lg',
         )}
       />
       <button

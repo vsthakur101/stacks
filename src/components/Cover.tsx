@@ -13,15 +13,15 @@ interface CoverProps {
 }
 
 /**
- * A cover or first-page thumbnail. Without an image we print a cover the way Indian presses did:
- * an indigo field, an inset double frame, the title centred in the book face.
+ * A cover or first-page thumbnail. Without an image, the theme prints a typographic cover:
+ * title set large at the top, author at the foot, in the theme's fallback colours.
  */
 export function Cover({ src, title, subtitle, shape = 'book', className, eager }: CoverProps) {
   const [failed, setFailed] = useState(!src);
   return (
     <div
       className={cn(
-        'relative overflow-hidden bg-indigo-deep shadow-[0_1px_2px_rgb(0_0_0/0.12),0_6px_16px_-10px_rgb(0_0_0/0.35)]',
+        't-cover relative overflow-hidden bg-raised',
         shape === 'book' ? 'aspect-[2/3]' : 'aspect-[3/4]',
         className,
       )}
@@ -41,10 +41,9 @@ export function Cover({ src, title, subtitle, shape = 'book', className, eager }
           }}
         />
       ) : (
-        <div className="pothi-frame absolute inset-0 flex flex-col items-center justify-center gap-3 px-[16%] pt-[22%] pb-[14%] text-center">
-          <span className="line-clamp-5 font-serif text-[clamp(0.85rem,1.25vw,1.1rem)] text-[#efe7d2]">{title}</span>
-          <span aria-hidden className="h-px w-6 bg-[#c8901a]/70" />
-          {subtitle ? <span className="line-clamp-2 text-[0.7rem] text-[#efe7d2]/70">{subtitle}</span> : null}
+        <div className="t-fallback absolute inset-0 flex flex-col justify-between p-[10%] pt-[24%]">
+          <span className="font-display line-clamp-5 text-[clamp(1rem,1.6vw,1.35rem)] leading-tight">{title}</span>
+          {subtitle ? <span className="line-clamp-2 text-xs opacity-85">{subtitle}</span> : null}
         </div>
       )}
     </div>

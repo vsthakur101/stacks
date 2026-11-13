@@ -15,7 +15,7 @@ export function ReaderBar({ title, identifier }: { title: string; identifier: st
       >
         <ArrowLeft className="size-4" /> Back
       </button>
-      <p className="min-w-0 flex-1 truncate font-serif text-[0.95rem] italic">{title}</p>
+      <p className="min-w-0 flex-1 truncate font-title text-[0.95rem]">{title}</p>
       <Link href={`/item/${identifier}`} className="hidden rounded-full px-3 py-1.5 text-sm hover:bg-white/10 sm:block">
         Details
       </Link>

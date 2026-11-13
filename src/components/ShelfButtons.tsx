@@ -61,7 +61,7 @@ export function RemoveShelfButton({ id, title }: { id: string; title: string }) 
         router.refresh();
       }}
       aria-label={`Remove the “${title}” shelf`}
-      className="rounded-full p-1.5 text-ink-faint hover:text-danger disabled:opacity-50"
+      className="-my-1 rounded-full p-2.5 text-ink-faint hover:text-danger disabled:opacity-50"
     >
       <X className="size-4" />
     </button>

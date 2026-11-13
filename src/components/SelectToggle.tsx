@@ -8,7 +8,7 @@ import { cn } from '@/lib/cn';
 import type { TrayItem } from '@/lib/shared/types';
 
 const base =
-  'inline-flex size-8 items-center justify-center rounded-full border transition-colors disabled:cursor-wait';
+  'inline-flex size-9 items-center justify-center rounded-full border transition-colors disabled:cursor-wait pointer-coarse:size-11';
 
 function look(selected: boolean) {
   return selected
@@ -16,7 +16,7 @@ function look(selected: boolean) {
     : 'border-ink/25 bg-raised/95 text-ink-soft hover:border-accent hover:text-accent';
 }
 
-/** Adds/removes a known archive.org item from the call slip. */
+/** Adds/removes a known archive.org item from your selection. */
 export function SelectToggle({ item, className, withLabel }: { item: TrayItem; className?: string; withLabel?: boolean }) {
   const selected = useIsSelected(item.identifier);
   const toggle = useTray((s) => s.toggle);
@@ -24,7 +24,7 @@ export function SelectToggle({ item, className, withLabel }: { item: TrayItem; c
     <button
       type="button"
       aria-pressed={selected}
-      aria-label={selected ? `Remove “${item.title}” from your slip` : `Add “${item.title}” to your slip`}
+      aria-label={selected ? `Remove “${item.title}” from your selection` : `Add “${item.title}” to your selection`}
       onClick={() => toggle(item)}
       className={cn(base, look(selected), className)}
     >
@@ -38,7 +38,7 @@ function SlipLabel({ selected, children }: { selected: boolean; children: React.
   return (
     <span className="flex items-center gap-2 text-sm text-ink-soft">
       {children}
-      {selected ? 'On your slip' : 'Add to slip'}
+      {selected ? 'Selected' : 'Select'}
     </span>
   );
 }
@@ -90,7 +90,7 @@ export function WorkSelectToggle({
     <button
       type="button"
       aria-pressed={selected}
-      aria-label={selected ? `Remove “${partial.title}” from your slip` : `Add “${partial.title}” to your slip`}
+      aria-label={selected ? `Remove “${partial.title}” from your selection` : `Add “${partial.title}” to your selection`}
       disabled={state === 'loading'}
       onClick={onClick}
       className={cn(base, look(selected), className)}
@@ -107,7 +107,7 @@ export function WorkSelectToggle({
   return withLabel ? <SlipLabel selected={selected}>{button}</SlipLabel> : button;
 }
 
-/** Adds a whole list (a page of results, a month of issues) to the slip. */
+/** Adds a whole list (a page of results, a month of issues) to your selection. */
 export function SelectAllButton({ items, label }: { items: TrayItem[]; label: string }) {
   const tray = useTray((s) => s.items);
   const add = useTray((s) => s.add);

@@ -36,7 +36,7 @@ export default async function WorkPage({ params }: { params: Params }) {
           <Cover src={work.coverLarge ?? work.cover} title={work.title} eager />
         </div>
         <div className="min-w-0">
-          <h1 className="font-serif text-3xl leading-tight text-ink sm:text-4xl">{work.title}</h1>
+          <h1 className="font-display text-3xl leading-tight text-ink sm:text-4xl">{work.title}</h1>
           <p className="mt-3 text-lg text-ink-soft">
             {work.authors.length > 0
               ? work.authors.map((a, i) => (

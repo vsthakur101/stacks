@@ -1,66 +1,177 @@
 @import 'tailwindcss';
 
 /*
- * Stacks — "Pothi".
- * Colours are named for the pigments of Indian manuscripts: china-clay paper, lamp-black ink tinted
- * with indigo, sindoor vermilion as the single accent, orpiment for one tiny badge, gerua in the rules.
- * Contrast (APCA): body ink Lc 96 light / 92 dark; secondary 81 / 76.
- * Motif: the double rule of Indian book covers — header base, fallback covers, the call slip. Nowhere else.
+ * Stacks themes (spec: docs/superpowers/specs/2026-11-14-stacks-themes-design.md).
+ * <html data-theme="catalogue|reading|poster">; light/dark follows the system.
+ * Every theme defines the same semantic tokens; components never branch on the theme.
+ * Contrast (WCAG 2): faint text ≥ 5.3:1 and accent ≥ 5.2:1 in every theme and mode.
  */
-:root {
-  --paper: #f5f3ee;
-  --raised: #fbfaf7;
-  --ink: #1a2036;
-  --ink-soft: #4a5066;
-  --ink-faint: #7a7e8e;
-  --rule: #dad4c7;
-  --vermilion: #b5321c;
-  --on-vermilion: #ffffff;
-  --vermilion-wash: #f6e4dd;
-  --indigo: #2c3a7a;
-  --indigo-deep: #1f2a5c;
-  --orpiment: #c8901a;
-  --lac: #8e1f3a;
+
+/* ───────────────────────── Catalogue (default) ───────────────────────── */
+[data-theme='catalogue'] {
+  --paper: #ffffff;
+  --raised: #f5f6f9;
+  --panel: #ffffff;
+  --ink: #141a33;
+  --ink-soft: #4b5167;
+  --ink-faint: #5d6379;
+  --rule: #e2e5ec;
+  --accent: #2d3bff;
+  --accent-ink: #ffffff;
+  --accent-wash: #e9ebff;
+  --danger: #b4232f;
+  --fallback-bg: #2d3bff;
+  --fallback-ink: #ffffff;
+  --ui-family: var(--font-anek), 'Anek Devanagari', system-ui, sans-serif;
+  --ui-axes: 'wdth' 100;
+  --display-family: var(--font-anek), 'Anek Devanagari', system-ui, sans-serif;
+  --display-axes: 'wdth' 82;
+  --display-weight: 650;
+  --display-tracking: -0.01em;
+  --title-axes: 'wdth' 92;
+  --title-weight: 560;
+  --cover-radius: 0;
+  --cover-shadow: none;
+  --cover-ring: 1px solid var(--rule);
   color-scheme: light;
 }
-
 @media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #11131b;
-    --raised: #191c27;
-    --ink: #ece8df;
-    --ink-soft: #d2cdc3;
-    --ink-faint: #a29e95;
-    --rule: #2a2d3a;
-    --vermilion: #f79a80;
-    --on-vermilion: #11131b;
-    --vermilion-wash: #2b1d1d;
-    --indigo: #b5bee6;
-    --indigo-deep: #222a4d;
-    --orpiment: #e2b04a;
-    --lac: #f2a0b2;
+  [data-theme='catalogue'] {
+    --paper: #0d1020;
+    --raised: #151a2e;
+    --panel: #0d1020;
+    --ink: #eef0f7;
+    --ink-soft: #bbc0d2;
+    --ink-faint: #959bb2;
+    --rule: #262c45;
+    --accent: #8f99ff;
+    --accent-ink: #0d1020;
+    --accent-wash: #1d2350;
+    --danger: #ff8f99;
+    --fallback-bg: #2d3bff;
     color-scheme: dark;
   }
+}
+
+/* ───────────────────────── Reading ───────────────────────── */
+[data-theme='reading'] {
+  --paper: #f2f2f5;
+  --raised: #ffffff;
+  --panel: #ffffff;
+  --ink: #1c1c22;
+  --ink-soft: #505064;
+  --ink-faint: #62627a;
+  --rule: #e2e2e8;
+  --accent: #0a7268;
+  --accent-ink: #ffffff;
+  --accent-wash: #dff2ef;
+  --danger: #b42318;
+  --fallback-bg: #0a7268;
+  --fallback-ink: #ffffff;
+  --ui-family: var(--font-noto), 'Noto Sans Devanagari', system-ui, sans-serif;
+  --ui-axes: normal;
+  --display-family: var(--font-noto), 'Noto Sans Devanagari', system-ui, sans-serif;
+  --display-axes: normal;
+  --display-weight: 650;
+  --display-tracking: -0.015em;
+  --title-axes: normal;
+  --title-weight: 560;
+  --cover-radius: 8px;
+  --cover-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 10px 24px -12px rgb(0 0 0 / 0.35);
+  --cover-ring: none;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  [data-theme='reading'] {
+    --paper: #121214;
+    --raised: #1c1c20;
+    --panel: #1c1c20;
+    --ink: #f2f2f5;
+    --ink-soft: #c4c4ce;
+    --ink-faint: #9c9ca8;
+    --rule: #2c2c33;
+    --accent: #4fd1c0;
+    --accent-ink: #08201d;
+    --accent-wash: #13302c;
+    --danger: #ff9b8f;
+    --fallback-bg: #13302c;
+    --fallback-ink: #e6faf6;
+    --cover-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 28px -14px rgb(0 0 0 / 0.8);
+    color-scheme: dark;
+  }
+}
+
+/* ───────────────────────── Poster ───────────────────────── */
+[data-theme='poster'] {
+  --paper: #ffffff;
+  --raised: #f4f4f2;
+  --panel: #ffffff;
+  --ink: #111111;
+  --ink-soft: #45454a;
+  --ink-faint: #5e5e66;
+  --rule: #e4e4e0;
+  --danger: #b4232f;
+  /* Section colours: --sec is the fill, --sec-ink the text-safe variant, --on-sec text on the fill. */
+  --sec: #2337d6;
+  --sec-ink: #2337d6;
+  --on-sec: #ffffff;
+  --accent: var(--sec-ink);
+  --accent-ink: var(--on-sec);
+  --accent-wash: color-mix(in oklab, var(--sec) 14%, var(--paper));
+  --fallback-bg: var(--sec);
+  --fallback-ink: var(--on-sec);
+  --ui-family: var(--font-anek), 'Anek Devanagari', system-ui, sans-serif;
+  --ui-axes: 'wdth' 100;
+  --display-family: var(--font-anek), 'Anek Devanagari', system-ui, sans-serif;
+  --display-axes: 'wdth' 75;
+  --display-weight: 780;
+  --display-tracking: -0.02em;
+  --title-axes: 'wdth' 85;
+  --title-weight: 650;
+  --cover-radius: 0;
+  --cover-shadow: none;
+  --cover-ring: none;
+  color-scheme: light;
+}
+[data-theme='poster'][data-section='newspapers'] { --sec: #c8361b; --sec-ink: #c8361b; --on-sec: #ffffff; }
+[data-theme='poster'][data-section='magazines'] { --sec: #f2a900; --sec-ink: #8a5a00; --on-sec: #111111; }
+[data-theme='poster'][data-section='government'] { --sec: #0e7347; --sec-ink: #0e7347; --on-sec: #ffffff; }
+[data-theme='poster'][data-section='manuscripts'] { --sec: #7a2e73; --sec-ink: #7a2e73; --on-sec: #ffffff; }
+@media (prefers-color-scheme: dark) {
+  [data-theme='poster'] {
+    --paper: #141414;
+    --raised: #1e1e1e;
+    --panel: #141414;
+    --ink: #f4f4f2;
+    --ink-soft: #c9c9c4;
+    --ink-faint: #a0a09a;
+    --rule: #2e2e2e;
+    --danger: #ff8f99;
+    --sec: #8e9bff;
+    --sec-ink: #8e9bff;
+    --on-sec: #141414;
+    color-scheme: dark;
+  }
+  [data-theme='poster'][data-section='newspapers'] { --sec: #ff8a6e; --sec-ink: #ff8a6e; --on-sec: #141414; }
+  [data-theme='poster'][data-section='magazines'] { --sec: #f7c04a; --sec-ink: #f7c04a; --on-sec: #141414; }
+  [data-theme='poster'][data-section='government'] { --sec: #5fd39a; --sec-ink: #5fd39a; --on-sec: #141414; }
+  [data-theme='poster'][data-section='manuscripts'] { --sec: #e28ad6; --sec-ink: #e28ad6; --on-sec: #141414; }
 }
 
 @theme inline {
   --color-paper: var(--paper);
   --color-raised: var(--raised);
+  --color-panel: var(--panel);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-ink-faint: var(--ink-faint);
   --color-rule: var(--rule);
-  --color-accent: var(--vermilion);
-  --color-accent-ink: var(--on-vermilion);
-  --color-accent-wash: var(--vermilion-wash);
-  --color-indigo: var(--indigo);
-  --color-indigo-deep: var(--indigo-deep);
-  --color-orpiment: var(--orpiment);
-  --color-danger: var(--lac);
-  --font-serif: var(--font-tiro), 'Tiro Devanagari Hindi', Georgia, serif;
-  --font-sans: var(--font-anek), 'Anek Devanagari', system-ui, sans-serif;
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-wash: var(--accent-wash);
+  --color-danger: var(--danger);
+  --font-sans: var(--ui-family);
 
-  /* 1.25 scale from 16px. */
   --text-xs: 0.8rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
@@ -70,6 +181,7 @@
   --text-3xl: 2.441rem;
   --text-4xl: 3.052rem;
   --text-5xl: 3.815rem;
+  --text-6xl: 4.768rem;
 }
 
 html {
@@ -82,31 +194,165 @@ html {
 
 body {
   background: var(--paper);
-  font-family: var(--font-sans);
-  font-variation-settings: 'wdth' 100;
+  font-family: var(--ui-family);
+  font-variation-settings: var(--ui-axes);
   line-height: 1.5;
 }
 
-/* Devanagari matras sit above the cap line; Latin-tight leading clips them. */
-h1,
-h2,
-h3,
-.font-serif {
-  line-height: 1.25;
+/* Tailwind v4 dropped the pointer cursor on buttons; every clickable control gets it back. */
+button:not(:disabled),
+summary,
+[role='button'],
+select,
+label:has(> input[type='radio']),
+label:has(> button[role='radio']) {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
 }
 
 :focus-visible {
-  outline: 2px solid var(--vermilion);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 2px;
 }
 
 ::selection {
-  background: var(--vermilion-wash);
+  background: var(--accent-wash);
 }
 
+/* ───────────────────────── Theme hooks ───────────────────────── */
+
+/* Page and section headings. Devanagari matras sit above the cap line, so leading never goes below 1.2. */
+.font-display {
+  font-family: var(--display-family);
+  font-weight: var(--display-weight);
+  font-variation-settings: var(--display-axes);
+  letter-spacing: var(--display-tracking);
+  line-height: 1.2;
+}
+
+/* Item titles on tiles, rows and the selection. */
+.font-title {
+  font-family: var(--display-family);
+  font-weight: var(--title-weight);
+  font-variation-settings: var(--title-axes);
+  line-height: 1.3;
+}
+
+.t-wordmark {
+  font-family: var(--display-family);
+  font-weight: var(--display-weight);
+  font-variation-settings: var(--display-axes);
+  letter-spacing: var(--display-tracking);
+  line-height: 1;
+}
+
+.t-cover {
+  border-radius: var(--cover-radius);
+  box-shadow: var(--cover-shadow);
+  outline: var(--cover-ring);
+  outline-offset: -1px;
+}
+
+.t-fallback {
+  background: var(--fallback-bg);
+  color: var(--fallback-ink);
+}
+
+/* Header: Catalogue a hairline, Reading a white bar, Poster a band in the section colour. */
+.t-header {
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+}
+[data-theme='reading'] .t-header {
+  background: var(--panel);
+  border-bottom-color: transparent;
+  box-shadow: 0 1px 0 var(--rule);
+}
+[data-theme='poster'] .t-header {
+  background: var(--sec);
+  color: var(--on-sec);
+  border-bottom: 0;
+  --ink: var(--on-sec);
+  --ink-soft: color-mix(in oklab, var(--on-sec) 82%, var(--sec));
+  --accent: var(--on-sec);
+}
+
+/* Result groups and shelves: Catalogue a top rule, Reading a white panel, Poster a heavy top rule. */
+.t-section {
+  border-top: 1px solid var(--rule);
+  padding-top: 2.5rem;
+  padding-bottom: 3.5rem;
+}
+[data-theme='reading'] .t-section {
+  border-top: 0;
+  background: var(--panel);
+  border-radius: 16px;
+  padding: 1.75rem 1.5rem 2rem;
+  margin-bottom: 1.25rem;
+}
+[data-theme='poster'] .t-section {
+  border-top: 6px solid var(--sec);
+}
+
+/* Page heading: Poster turns it into a full-width colour band. */
+[data-theme='poster'] .t-pagehead {
+  margin-inline: calc(50% - 50vw);
+  margin-top: -2.5rem;
+  padding: 3rem max(1rem, calc(50vw - 50% + 1rem)) 2.5rem;
+  background: var(--sec);
+  color: var(--on-sec);
+  --ink: var(--on-sec);
+  --ink-soft: color-mix(in oklab, var(--on-sec) 85%, var(--sec));
+}
+@media (min-width: 640px) {
+  [data-theme='poster'] .t-pagehead {
+    margin-top: -3.5rem;
+  }
+}
+[data-theme='poster'] .t-pagehead h1 {
+  font-size: clamp(3rem, 9vw, 6.5rem);
+  line-height: 1.05;
+}
+
+/* The selection trigger. Catalogue: a slim full-width bar. Reading: a floating pill. Poster: a block. */
+.t-tray {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+[data-theme='catalogue'] .t-tray {
+  inset-inline: 0;
+  bottom: 0;
+  justify-content: space-between;
+  padding: 0.85rem max(1rem, calc(50vw - 720px + 3rem));
+  background: var(--ink);
+  color: var(--paper);
+}
+[data-theme='reading'] .t-tray {
+  left: 50%;
+  bottom: 1.25rem;
+  transform: translateX(-50%);
+  padding: 0.6rem 0.6rem 0.6rem 1.25rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 0 16px 36px -14px rgb(0 0 0 / 0.55);
+}
+[data-theme='poster'] .t-tray {
+  right: 1rem;
+  bottom: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--sec);
+  color: var(--on-sec);
+}
+
+/* Reading text (descriptions, bios). */
 .prose-reading {
-  font-family: var(--font-serif);
   font-size: 1.0625rem;
   line-height: 1.75;
   max-width: 66ch;
@@ -115,34 +361,7 @@ h3,
   margin-top: 0.9em;
 }
 
-/* The double rule. */
-.rule-double {
-  border-color: var(--rule);
-  border-style: double;
-}
-
-/* Inset double frame for fallback covers: two hairlines, like a pothi border. */
-.pothi-frame {
-  box-shadow:
-    inset 0 0 0 6px var(--indigo-deep),
-    inset 0 0 0 7px color-mix(in oklab, var(--orpiment) 70%, transparent),
-    inset 0 0 0 10px var(--indigo-deep),
-    inset 0 0 0 11px color-mix(in oklab, var(--orpiment) 45%, transparent);
-}
-
-/* Ruled lines inside the open slip. */
-.slip-ruled {
-  background-color: var(--raised);
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent calc(3.5rem - 1px),
-    var(--rule) calc(3.5rem - 1px),
-    var(--rule) 3.5rem
-  );
-}
-
-/* A shelf is one row that scrolls sideways; about seven covers show on a wide screen. */
+/* A shelf is one row that scrolls sideways. */
 .shelf {
   grid-template-columns: none;
   grid-auto-flow: column;
@@ -158,9 +377,49 @@ h3,
   scroll-snap-align: start;
 }
 
+/* Filter-bar menus: a dropdown on desktop, a bottom sheet on phones (the bar itself scrolls sideways). */
+.menu-panel {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  min-width: 15rem;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: var(--menu-radius, 10px);
+  box-shadow: 0 18px 40px -18px rgb(0 0 0 / 0.45);
+}
+[data-theme='catalogue'] .menu-panel,
+[data-theme='poster'] .menu-panel {
+  --menu-radius: 0;
+}
+@media (max-width: 639px) {
+  .menu-panel {
+    position: fixed;
+    inset: auto 0 0 0;
+    top: auto;
+    min-width: 0;
+    max-height: 75vh;
+    border-radius: 16px 16px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
 @keyframes slip-in {
   from {
     transform: translateX(16px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes sheet-in {
+  from {
+    transform: translateY(24px);
     opacity: 0;
   }
   to {
@@ -181,4 +440,14 @@ h3,
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Catalogue and Poster are square-edged; Reading keeps its rounded shapes. `.keep-round` opts out. */
+[data-theme='catalogue'] .rounded-full:not(.keep-round),
+[data-theme='poster'] .rounded-full:not(.keep-round),
+[data-theme='catalogue'] .rounded-md,
+[data-theme='poster'] .rounded-md,
+[data-theme='catalogue'] .rounded-\[1\.25rem\],
+[data-theme='poster'] .rounded-\[1\.25rem\] {
+  border-radius: 2px;
 }

@@ -44,39 +44,33 @@ export function CallSlip() {
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
-        {/* Collapsed, the slip is a palm leaf: long, round-ended, a binding hole at one end. */}
-        <button
-          type="button"
-          className="rule-double fixed right-4 bottom-4 z-30 flex items-center gap-3.5 rounded-full border-[3px] bg-raised py-2.5 pr-3 pl-4 text-left shadow-[0_10px_30px_-14px_rgb(0_0_0/0.45)] transition-transform hover:-translate-y-0.5 sm:right-8 sm:bottom-8"
-        >
-          <span aria-hidden className="size-2.5 rounded-full border border-ink/40 bg-paper" />
-          <span className="font-serif text-lg italic text-ink">Call slip</span>
-          <span className="min-w-7 rounded-full bg-orpiment px-2 py-0.5 text-center text-sm font-medium text-[#1a2036] tabular-nums">
-            <span className="sr-only">, </span>
-            {count}
-            <span className="sr-only"> {count === 1 ? 'item' : 'items'}</span>
+        {/* The theme decides the shape: a bar (Catalogue), a floating pill (Reading), a block (Poster). */}
+        <button type="button" className="t-tray text-left">
+          <span className="text-[0.95rem]">
+            <span className="font-semibold tabular-nums">{count}</span> selected
           </span>
+          <span className="keep-round rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-ink">Review and download</span>
         </button>
       </Dialog.Trigger>
 
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-[#0b0d14]/40 data-[state=open]:animate-[fade_150ms_ease-out]" />
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40 data-[state=open]:animate-[fade_150ms_ease-out]" />
         <Dialog.Content
-          className="rule-double fixed top-0 right-0 bottom-0 z-50 flex w-full max-w-[440px] flex-col border-l-[3px] bg-raised text-ink shadow-2xl focus:outline-none data-[state=open]:animate-[slip-in_220ms_cubic-bezier(.2,.8,.2,1)]"
+          className="fixed inset-x-0 bottom-0 z-50 flex max-h-[88dvh] flex-col rounded-t-2xl bg-panel text-ink shadow-2xl focus:outline-none data-[state=open]:animate-[sheet-in_220ms_cubic-bezier(.2,.8,.2,1)] sm:inset-y-0 sm:left-auto sm:max-h-none sm:w-[440px] sm:rounded-none sm:border-l sm:border-rule sm:data-[state=open]:animate-[slip-in_220ms_cubic-bezier(.2,.8,.2,1)]"
           aria-describedby={undefined}
         >
           <div className="flex items-start justify-between px-7 pt-7 pb-5">
             <div>
-              <Dialog.Title className="font-serif text-[1.75rem] italic">Call slip</Dialog.Title>
+              <Dialog.Title className="font-display text-[1.75rem]">Selection</Dialog.Title>
               <p className="mt-1 text-sm text-ink-soft">
                 {step.kind === 'format'
-                  ? 'Choose one format for everything on the slip.'
+                  ? 'Choose one format for everything selected.'
                   : step.kind === 'started'
-                    ? 'Handed in.'
-                    : `${count} ${count === 1 ? 'item' : 'items'} to fetch from the stacks.`}
+                    ? 'Download started.'
+                    : `${count} ${count === 1 ? 'item' : 'items'} ready to download.`}
               </p>
             </div>
-            <Dialog.Close aria-label="Close" className="-mr-2 rounded-full p-2 text-ink-soft hover:text-ink">
+            <Dialog.Close aria-label="Close" className="-mr-3 -mt-1 rounded-full p-3 text-ink-soft hover:text-ink">
               <X className="size-5" />
             </Dialog.Close>
           </div>
@@ -92,11 +86,11 @@ export function CallSlip() {
 
           {step.kind === 'list' ? (
             <>
-              <ol className="slip-ruled flex-1 overflow-y-auto border-t border-rule">
+              <ol className="flex-1 divide-y divide-rule overflow-y-auto border-t border-rule">
                 {items.map((item) => (
-                  <li key={item.identifier} className="flex h-14 items-center gap-3 px-7">
+                  <li key={item.identifier} className="flex min-h-14 items-center gap-3 px-7 py-2">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-serif text-[1.05rem]">{item.title}</p>
+                      <p className="truncate font-title text-[1.05rem]">{item.title}</p>
                       <p className="truncate text-xs text-ink-faint">
                         {SECTION_LABEL[item.section]}
                         {item.publication ? `, ${item.publication}` : ''}
@@ -107,7 +101,7 @@ export function CallSlip() {
                       type="button"
                       onClick={() => remove(item.identifier)}
                       aria-label={`Remove “${item.title}”`}
-                      className="rounded-full p-1.5 text-ink-faint hover:text-danger"
+                      className="-mr-2 rounded-full p-2.5 text-ink-faint hover:text-danger"
                     >
                       <X className="size-4" />
                     </button>
@@ -116,7 +110,7 @@ export function CallSlip() {
               </ol>
               <div className="flex items-center justify-between gap-4 border-t border-rule px-7 py-5">
                 <button type="button" onClick={clear} className="text-sm text-ink-soft hover:text-danger">
-                  Clear slip
+                  Clear selection
                 </button>
                 <button
                   type="button"
@@ -131,7 +125,7 @@ export function CallSlip() {
             <FormatStep onBack={() => setStep({ kind: 'list' })} onStarted={(n) => setStep({ kind: 'started', count: n })} />
           ) : (
             <div className="flex-1 border-t border-rule px-7 py-8">
-              <p className="font-serif text-xl">
+              <p className="font-title text-xl">
                 {step.count} {step.count === 1 ? 'item is' : 'items are'} downloading.
               </p>
               <p className="mt-2 text-ink-soft">Files go into your download folder, sorted by section.</p>
@@ -228,7 +222,7 @@ function FormatStep({ onBack, onStarted }: { onBack: () => void; onStarted: (cou
                     >
                       <RadioGroup.Indicator className="size-2.5 rounded-full bg-accent" />
                     </RadioGroup.Item>
-                    <span className="flex-1 font-serif text-lg">{FORMAT_LABELS[f.format]}</span>
+                    <span className="flex-1 font-title text-lg">{FORMAT_LABELS[f.format]}</span>
                     <span className="text-right text-sm text-ink-soft tabular-nums">
                       {f.available} of {downloadable}
                       {f.bytes > 0 ? <span className="block text-xs text-ink-faint">about {formatBytes(f.bytes)}</span> : null}

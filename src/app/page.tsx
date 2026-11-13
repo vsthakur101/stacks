@@ -21,7 +21,7 @@ export default function Home() {
   return (
     <div>
       <section className="pt-4 pb-14 sm:pt-10 sm:pb-16">
-        <h1 className="max-w-4xl font-serif text-3xl text-ink sm:text-5xl">What would you like to read?</h1>
+        <h1 className="max-w-4xl font-display text-3xl text-ink sm:text-5xl">What would you like to read?</h1>
         <div className="mt-10 max-w-3xl">
           <SearchBox action="/search" placeholder="mahabharat, Pride and Prejudice, BYTE 1985" size="lg" autoFocus />
         </div>
@@ -34,7 +34,7 @@ export default function Home() {
                 href={r.href}
                 className="inline-flex items-baseline gap-1.5 rounded-full border border-rule px-3 py-1 text-ink hover:border-accent"
               >
-                <span className="font-serif text-[1.02rem]">{r.label}</span>
+                <span className="font-title text-[1.02rem]">{r.label}</span>
                 {r.detail ? <span className="text-xs text-ink-faint">{r.detail}</span> : null}
               </Link>
             ))}
@@ -97,9 +97,9 @@ function ShelfRow({
 }) {
   const empty = !results || results.results.length === 0;
   return (
-    <section className="border-t border-rule pt-10 pb-14">
+    <section className="t-section">
       <div className="mb-8 flex items-baseline justify-between gap-4">
-        <h2 className="flex items-center gap-2 font-serif text-2xl text-ink">
+        <h2 className="flex items-center gap-2 font-display text-2xl text-ink">
           {title}
           {remove}
         </h2>

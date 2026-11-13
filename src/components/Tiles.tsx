@@ -43,7 +43,7 @@ export function WorkTile({ work }: { work: WorkCard }) {
           <Cover src={work.cover} title={work.title} subtitle={authors} />
           <DownloadedMark identifiers={work.scanIds} className="absolute right-2 bottom-2" />
         </div>
-        <h3 className="mt-3.5 line-clamp-2 font-serif text-[1.05rem] text-ink group-hover:text-accent">{work.title}</h3>
+        <h3 className="mt-3.5 line-clamp-2 font-title text-[1.05rem] text-ink group-hover:text-accent">{work.title}</h3>
       </Link>
       {authors || work.year ? (
         <p className="mt-1 line-clamp-1 text-sm text-ink-soft">{[authors, work.year].filter(Boolean).join(', ')}</p>
@@ -85,7 +85,7 @@ export function ItemTile({
           <Cover src={card.thumbnail} title={card.title} subtitle={meta} shape="page" />
           {card.isCollection ? null : <DownloadedMark identifiers={[card.identifier]} className="absolute right-2 bottom-2" />}
         </div>
-        <h3 className="mt-3.5 line-clamp-2 font-serif text-[1.05rem] text-ink group-hover:text-accent">{card.title}</h3>
+        <h3 className="mt-3.5 line-clamp-2 font-title text-[1.05rem] text-ink group-hover:text-accent">{card.title}</h3>
       </Link>
       {meta ? <p className="mt-1 line-clamp-1 text-sm text-ink-soft">{meta}</p> : null}
       {card.isCollection ? null : (

@@ -1,14 +1,15 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
+import { FilterBar } from '@/components/FilterBar';
+import { languageMenu, orderMenu } from '@/components/filterMenus';
 import { Pager } from '@/components/Pager';
+import { ResultsHeader } from '@/components/ResultsHeader';
+import { SpellingsMenu } from '@/components/SpellingsMenu';
 import { SearchBox } from '@/components/SearchBox';
 import { TilesSkeleton } from '@/components/Skeletons';
 import { SelectAllButton } from '@/components/SelectToggle';
-import { LanguagePicker } from '@/components/LanguagePicker';
 import { SaveShelfButton } from '@/components/ShelfButtons';
-import { SortPicker } from '@/components/SortPicker';
-import { SpellingChips } from '@/components/SpellingChips';
 import { Empty, PageHeading, StaleNotice, Unreachable } from '@/components/States';
 import { ItemTile, itemToTray, TileGrid } from '@/components/Tiles';
 import { listPublications, searchSection } from '@/lib/server/catalog/archive';
@@ -44,20 +45,28 @@ export default async function SectionPage({ params, searchParams }: { params: Pa
 
   return (
     <>
-      <PageHeading title={cfg.name} lede={cfg.tagline} />
+      <PageHeading title={cfg.name} lede={state.q ? undefined : cfg.tagline} />
       {state.q ? (
         <>
-          <div className="mb-6 max-w-2xl">
+          <div className="mb-8 max-w-3xl space-y-4">
             <SearchBox action={`/${section}`} placeholder={`Search ${cfg.name.toLowerCase()}`} defaultValue={state.q} hidden={hidden} />
-            <Suspense fallback={<div className="mt-3 h-7" />}>
-              <Spellings path={`/${section}`} sp={sp} state={state} />
-            </Suspense>
-          </div>
-          <div className="mb-5">
-            <LanguagePicker current={state.lang} href={(code) => hrefWith(`/${section}`, sp, { lang: code })} />
-          </div>
-          <div className="mb-10">
-            <SortPicker current={state.sort} href={(s) => hrefWith(`/${section}`, sp, { sort: s })} />
+            <FilterBar
+              menus={[
+                languageMenu(state.lang, (code) => hrefWith(`/${section}`, sp, { lang: code })),
+                orderMenu(state.sort, (s) => hrefWith(`/${section}`, sp, { sort: s })),
+              ]}
+            >
+              <Suspense fallback={null}>
+                <SpellingsMenu
+                  expanded={expandQuery(state.q, state)}
+                  excluded={state.excluded}
+                  exact={state.exact}
+                  removeHref={(v) => hrefWith(`/${section}`, sp, { x: [...state.excluded, v] })}
+                  resetHref={hrefWith(`/${section}`, sp, { x: undefined })}
+                  exactHref={(on) => hrefWith(`/${section}`, sp, { exact: on ? '1' : undefined, x: undefined })}
+                />
+              </Suspense>
+            </FilterBar>
           </div>
           <Suspense key={JSON.stringify(sp)} fallback={<TilesSkeleton count={12} shape="page" />}>
             <Results section={section} sp={sp} state={state} />
@@ -83,7 +92,7 @@ async function Publications({ section, page }: { section: SectionId; page: numbe
   return (
     <>
       <StaleNotice stale={pubs.stale} />
-      <h2 className="mb-8 font-serif text-xl text-ink">
+      <h2 className="mb-8 font-title text-xl text-ink">
         {pubs.total.toLocaleString('en')} {pubs.total === 1 ? cfg.unit.singular : cfg.unit.plural}, most read first
       </h2>
       <TileGrid>
@@ -93,21 +102,6 @@ async function Publications({ section, page }: { section: SectionId; page: numbe
       </TileGrid>
       <Pager path={`/${section}`} params={{}} page={page} total={pubs.total} pageSize={pubs.pageSize} />
     </>
-  );
-}
-
-async function Spellings({ path, sp, state }: { path: string; sp: RawParams; state: SearchState }) {
-  const expanded = await expandQuery(state.q!, state);
-  const view = (changes: Record<string, string | string[] | undefined>) => hrefWith(path, sp, changes);
-  return (
-    <SpellingChips
-      added={expanded.added}
-      excluded={state.excluded}
-      exact={state.exact}
-      removeHref={(v) => view({ x: [...state.excluded, v] })}
-      resetHref={view({ x: undefined })}
-      exactHref={(on) => view({ exact: on ? '1' : undefined, x: undefined })}
-    />
   );
 }
 
@@ -132,15 +126,15 @@ async function Results({ section, sp, state }: { section: SectionId; sp: RawPara
       ) : (
         <>
           <StaleNotice stale={results.stale} />
-          <div className="mb-8 flex flex-wrap items-baseline justify-between gap-4">
-            <h2 className="font-serif text-xl text-ink">
-              {results.total.toLocaleString('en')} results, {state.sort ? SORTS[state.sort].label.toLowerCase() : 'best match'} first
-            </h2>
-            <div className="flex flex-wrap items-center gap-6">
-              <SaveShelfButton title={[q, cfg.name, langName].filter(Boolean).join(', ')} path={path} params={sp} />
-              <SelectAllButton items={results.results.map((c) => itemToTray(c, section))} label="this page to the slip" />
-            </div>
-          </div>
+          <ResultsHeader
+            title={`${results.total.toLocaleString('en')} results`}
+            actions={
+              <>
+                <SaveShelfButton title={[q, cfg.name, langName].filter(Boolean).join(', ')} path={path} params={sp} />
+                <SelectAllButton items={results.results.map((c) => itemToTray(c, section))} label="this page to your selection" />
+              </>
+            }
+          />
           <TileGrid>
             {results.results.map((c) => (
               <ItemTile key={c.identifier} card={c} section={section} />

@@ -26,7 +26,7 @@ export function IssueList({ items, section, publication }: { items: ItemCard[]; 
         return (
           <section key={month}>
             <div className="mb-3 flex items-baseline justify-between gap-4 border-b border-rule pb-2">
-              <h3 className="font-serif text-xl text-ink">{label}</h3>
+              <h3 className="font-title text-xl text-ink">{label}</h3>
               {issues.length > 1 ? (
                 <SelectAllButton
                   items={tray}
@@ -49,7 +49,7 @@ function Rows({ issues, section, publication }: { issues: ItemCard[]; section: S
         <li key={issue.identifier} className="flex items-center gap-4 py-1.5">
           <SelectToggle item={itemToTray(issue, section, publication)} />
           <Link href={itemHref(issue.identifier, section, publication)} className="group flex min-w-0 flex-1 items-baseline gap-4">
-            <span className="w-36 shrink-0 font-serif text-ink tabular-nums group-hover:text-accent">
+            <span className="w-36 shrink-0 font-title text-ink tabular-nums group-hover:text-accent">
               {formatDisplayDate(issue.date) ?? 'Undated'}
             </span>
             <span className="truncate text-sm text-ink-soft">{issue.title}</span>

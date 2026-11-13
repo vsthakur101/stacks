@@ -32,7 +32,7 @@ export default async function AuthorPage({ params, searchParams }: { params: Par
           <img src={author.photo} alt="" className="aspect-[3/4] w-[140px] object-cover ring-1 ring-rule" />
         ) : null}
         <div className={author.photo ? '' : 'sm:col-span-2'}>
-          <h1 className="font-serif text-3xl text-ink sm:text-4xl">{author.name}</h1>
+          <h1 className="font-display text-3xl text-ink sm:text-4xl">{author.name}</h1>
           {author.lifespan ? <p className="mt-2 text-ink-soft">{author.lifespan}</p> : null}
           {author.bio ? <p className="prose-reading mt-5 line-clamp-[8] text-ink">{author.bio}</p> : null}
         </div>
@@ -44,7 +44,7 @@ export default async function AuthorPage({ params, searchParams }: { params: Par
         <Empty title="None of their books are free to read yet." />
       ) : (
         <>
-          <h2 className="mb-8 font-serif text-2xl text-ink">
+          <h2 className="mb-8 font-display text-2xl text-ink">
             {works.total.toLocaleString('en')} {works.total === 1 ? 'book' : 'books'} free to read
           </h2>
           <TileGrid>

@@ -30,7 +30,8 @@ Downloads go to `~/Books/Archive` by default (change it under Settings). Tests: 
 - **Order:** archive.org results can be sorted by best match, most read, oldest or newest.
 - **Home:** your recent searches (one per query, reopening the view you used last) and any search you saved with "Save as a shelf on Home".
 - **Already downloaded:** covers and issues you have on disk show a tick; the item page offers Open file and Show in Finder.
-- **Call slip:** press + on any cover or issue to add it. The slip persists across pages. Choose **Download**, pick one format, and the local server fetches every item into `<folder>/<Section>/…`.
+- **Look:** three themes, chosen under Settings: **Catalogue** (default; white, crisp, ultramarine), **Reading** (soft, app-like, rounded) and **Poster** (each section has its own colour). Light or dark follows your Mac. All theme differences live in `src/app/globals.css`; components use shared tokens only. Spec: `docs/superpowers/specs/2026-11-14-stacks-themes-design.md`.
+- **Selection:** press + on any cover or issue to select it. Your selection persists across pages. Choose **Review and download**, pick one format, and the local server fetches every item into `<folder>/<Section>/…`.
 - **Speed:** pages stream: the search box and filters appear at once and each group of results fills in as its source answers. Cached results older than their freshness window are shown instantly and refreshed in the background. archive.org, Open Library and Google each get their own queue of 4 requests. Connections are kept open for 10 minutes and warmed at start-up and while you're active, because new connections from Node to archive.org intermittently stall for ~19 s (see `src/lib/server/net.ts`).
 - **Downloads:** 3 at a time by default. Interrupted downloads resume from the partial file (including after a restart), files are checked against archive.org's size and MD5, and files you already have are skipped.
 - **Limits:** borrow-only (lending library) scans are never downloaded. Missing formats are skipped or substituted, depending on the fallback you choose.
@@ -45,7 +46,8 @@ Design: [`docs/superpowers/specs/2026-11-13-stacks-phase1-design.md`](docs/super
 | `src/lib/server/downloads/` | format mapping, file naming, resumable fetcher, download queue |
 | `src/lib/server/http.ts` | shared outbound client: rate limit (4 concurrent), cache, stale fallback |
 | `src/app/api/` | local-only JSON API (guarded against cross-site requests) |
-| `src/components/CallSlip.tsx` | the selection tray and format step |
+| `src/components/CallSlip.tsx` | the selection bar, panel and format step |
+| `src/components/FilterBar.tsx` | the one-line filter bar (language, order, source, spellings) |
 | `src/instrumentation.ts` | wakes the download queue at server start |
 
 To fix or extend the Manuscripts section, edit `curatedCollections` in `src/lib/server/catalog/sections.ts`.

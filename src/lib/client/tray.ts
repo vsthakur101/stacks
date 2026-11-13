@@ -60,7 +60,7 @@ export const useTray = create<TrayState>()(
           items: [...get().items, ...accepted],
           notice:
             accepted.length < fresh.length
-              ? `The slip holds ${TRAY_CAP} items. ${fresh.length - accepted.length} weren’t added.`
+              ? `Your selection holds ${TRAY_CAP} items. ${fresh.length - accepted.length} weren’t added.`
               : get().notice,
         });
       },

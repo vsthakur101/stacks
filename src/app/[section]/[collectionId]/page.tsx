@@ -61,7 +61,7 @@ export default async function PublicationPage({ params, searchParams }: { params
         </Link>
       </nav>
       <header className="mb-12 max-w-3xl">
-        <h1 className="font-serif text-3xl leading-tight text-ink sm:text-4xl">{title}</h1>
+        <h1 className="font-display text-3xl leading-tight text-ink sm:text-4xl">{title}</h1>
         {span && span.total > 0 ? (
           <p className="mt-3 text-lg text-ink-soft">
             {span.total.toLocaleString('en')} {span.total === 1 ? 'item' : 'items'}
@@ -74,7 +74,7 @@ export default async function PublicationPage({ params, searchParams }: { params
 
       {children && children.results.length > 0 ? (
         <section className="mb-16">
-          <h2 className="mb-8 font-serif text-2xl text-ink">
+          <h2 className="mb-8 font-display text-2xl text-ink">
             {children.total.toLocaleString('en')} {children.total === 1 ? 'title' : 'titles'} in this collection
           </h2>
           <TileGrid>
@@ -122,7 +122,7 @@ function YearIndex({ section, collectionId, years, current }: { section: Section
                   <Link
                     href={href(y)}
                     aria-current={y === current ? 'page' : undefined}
-                    className={cn('font-serif tabular-nums', y === current ? 'text-accent underline underline-offset-4' : 'text-ink-soft hover:text-ink')}
+                    className={cn('font-title tabular-nums', y === current ? 'text-accent underline underline-offset-4' : 'text-ink-soft hover:text-ink')}
                   >
                     {y}
                   </Link>
@@ -152,10 +152,10 @@ async function Year({ section, collectionId, publication, year }: { section: Sec
   return (
     <>
       <div className="mb-8 flex flex-wrap items-baseline justify-between gap-4">
-        <h2 className="font-serif text-2xl text-ink">
+        <h2 className="font-display text-2xl text-ink">
           {year}, {items.results.length.toLocaleString('en')} {items.results.length === 1 ? 'item' : 'items'}
         </h2>
-        <SelectAllButton items={items.results.map((c) => itemToTray(c, section, publication))} label={`all of ${year} to the slip`} />
+        <SelectAllButton items={items.results.map((c) => itemToTray(c, section, publication))} label={`all of ${year} to your selection`} />
       </div>
       <IssueList items={items.results} section={section} publication={publication} />
     </>
@@ -168,7 +168,7 @@ async function Undated({ section, collectionId, publication, page }: { section: 
   if (items.results.length === 0) return <Empty title="Every item here has a date." />;
   return (
     <>
-      <h2 className="mb-8 font-serif text-2xl text-ink">Undated, {items.total.toLocaleString('en')} items</h2>
+      <h2 className="mb-8 font-display text-2xl text-ink">Undated, {items.total.toLocaleString('en')} items</h2>
       <TileGrid>
         {items.results.map((c) => (
           <ItemTile key={c.identifier} card={c} section={section} publication={publication} />
@@ -185,8 +185,8 @@ async function AllItems({ section, collectionId, publication, page }: { section:
   return (
     <>
       <div className="mb-8 flex flex-wrap items-baseline justify-between gap-4">
-        <h2 className="font-serif text-2xl text-ink">Items, most read first</h2>
-        <SelectAllButton items={items.results.map((c) => itemToTray(c, section, publication))} label="this page to the slip" />
+        <h2 className="font-display text-2xl text-ink">Items, most read first</h2>
+        <SelectAllButton items={items.results.map((c) => itemToTray(c, section, publication))} label="this page to your selection" />
       </div>
       <TileGrid>
         {items.results.map((c) => (

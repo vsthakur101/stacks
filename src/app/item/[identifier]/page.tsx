@@ -67,7 +67,7 @@ export default async function ItemPage({ params, searchParams }: { params: Param
           <Cover src={archiveThumb(identifier)} title={item.title} shape="page" eager />
         </div>
         <div className="min-w-0">
-          <h1 className="font-serif text-3xl leading-tight text-ink sm:text-4xl">{item.title}</h1>
+          <h1 className="font-display text-3xl leading-tight text-ink sm:text-4xl">{item.title}</h1>
 
           <dl className="mt-6 grid grid-cols-[auto_1fr] gap-x-8 gap-y-1.5 text-sm">
             {details

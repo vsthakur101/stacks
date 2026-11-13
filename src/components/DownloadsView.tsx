@@ -95,9 +95,9 @@ export function DownloadsView() {
         </p>
       ) : jobs.length === 0 ? (
         <div className="max-w-prose py-12">
-          <p className="font-serif text-xl text-ink">Nothing downloading.</p>
+          <p className="font-title text-xl text-ink">Nothing downloading.</p>
           <p className="mt-2 text-ink-soft">
-            Add items to your call slip with the + on any cover, then choose Download on the slip.
+            Select items with the + on any cover, then choose Review and download.
           </p>
         </div>
       ) : (
@@ -133,7 +133,7 @@ function Job({ job, onAct }: { job: JobView; onAct: (fn: () => Promise<unknown>)
     <section>
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-b border-rule pb-3">
         <div>
-          <h2 className="font-serif text-xl text-ink">
+          <h2 className="font-title text-xl text-ink">
             {job.tasks.length} {job.tasks.length === 1 ? 'file' : 'files'} as {FORMAT_LABELS[job.format]}
           </h2>
           <p className="mt-0.5 text-sm text-ink-soft">
@@ -192,7 +192,7 @@ function TaskRow({ task, onAct }: { task: TaskView; onAct: (fn: () => Promise<un
   return (
     <li className="grid gap-x-6 gap-y-1 py-3 sm:grid-cols-[minmax(0,1fr)_220px]">
       <div className="min-w-0">
-        <p className="truncate font-serif text-ink">{task.title}</p>
+        <p className="truncate font-title text-ink">{task.title}</p>
         {fileName ? <p className="truncate text-xs text-ink-faint">{fileName}</p> : null}
       </div>
       <div className="text-sm sm:text-right">
