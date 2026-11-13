@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { SearchBox } from '@/components/SearchBox';
+import { Suspense } from 'react';
 import { LanguagePicker } from '@/components/LanguagePicker';
+import { SearchBox } from '@/components/SearchBox';
+import { LineSkeleton, SectionSkeleton } from '@/components/Skeletons';
 import { SortPicker } from '@/components/SortPicker';
 import { SpellingChips } from '@/components/SpellingChips';
 import { Empty, PageHeading } from '@/components/States';
@@ -11,10 +13,10 @@ import { searchWorks } from '@/lib/server/catalog/openLibrary';
 import { ARCHIVE_SECTIONS, SECTIONS } from '@/lib/server/catalog/sections';
 import { attempt, str, type SearchParams } from '@/lib/server/pageParams';
 import { recordSearch } from '@/lib/server/search/library';
-import { hrefWith, parseSearch, SORTS } from '@/lib/server/search/params';
-import { expandQuery } from '@/lib/server/search/variants';
+import { hrefWith, parseSearch, SORTS, type RawParams, type SearchState } from '@/lib/server/search/params';
+import { expandQuery, type ExpandedQuery } from '@/lib/server/search/variants';
 import { languageFilterName } from '@/lib/shared/languages';
-import type { WorkCard } from '@/lib/shared/types';
+import type { ItemCard, Page, SectionId, WorkCard } from '@/lib/shared/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +27,10 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
 
 const PREVIEW = 6;
 
+/**
+ * The search box and filters render immediately. Results stream in: each group appears as soon as its
+ * own source answers, so one slow source never holds up the others.
+ */
 export default async function SearchPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const state = parseSearch(sp);
@@ -39,71 +45,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
       </>
     );
   }
-
   recordSearch('/search', sp);
-  const expanded = await expandQuery(q, state);
-  const sort = state.sort ? [...SORTS[state.sort].archive] : undefined;
   const view = (changes: Record<string, string | string[] | undefined>) => hrefWith('/search', sp, changes);
-  // Links into a section carry the language, order and spelling choices made here.
-  const carry = (path: string, extra: Record<string, string> = {}) => hrefWith(path, sp, extra);
-  const [books, texts, ...others] = await Promise.all([
-    expanded.ol ? attempt(() => searchWorks({ query: expanded.ol, pageSize: PREVIEW, language: lang })) : Promise.resolve(null),
-    attempt(() => searchTexts(expanded.lucene, 1, PREVIEW, lang, sort)),
-    ...ARCHIVE_SECTIONS.map((s) => attempt(() => searchSection(s, expanded.lucene, 1, lang, sort, PREVIEW))),
-  ]);
-
-  // Order: catalogued books, then every other scan on archive.org, then the archive sections.
-  const groups: Group[] = [];
-  if (books && books.total > 0) {
-    groups.push({
-      id: 'books',
-      title: 'Books',
-      summary: 'catalogued books',
-      total: books.total,
-      href: carry('/books'),
-      body: (
-        <TileGrid>
-          {books.results.map((w: WorkCard) => (
-            <WorkTile key={w.workId} work={w} />
-          ))}
-        </TileGrid>
-      ),
-    });
-  }
-  if (texts && texts.total > 0) {
-    groups.push({
-      id: 'archive',
-      title: 'More on archive.org',
-      summary: 'scans on archive.org',
-      total: texts.total,
-      href: carry('/books', { source: 'archive' }),
-      body: (
-        <TileGrid>
-          {texts.results.map((c) => (
-            <ItemTile key={c.identifier} card={c} section="books" />
-          ))}
-        </TileGrid>
-      ),
-    });
-  }
-  ARCHIVE_SECTIONS.forEach((section, i) => {
-    const page = others[i];
-    if (!page || page.total === 0) return;
-    groups.push({
-      id: section,
-      title: SECTIONS[section].name,
-      summary: `in ${SECTIONS[section].name.toLowerCase()}`,
-      total: page.total,
-      href: carry(`/${section}`),
-      body: (
-        <TileGrid>
-          {page.results.map((c) => (
-            <ItemTile key={c.identifier} card={c} section={section} />
-          ))}
-        </TileGrid>
-      ),
-    });
-  });
+  // Started once here, shared by the chips and every group below.
+  const expanded = expandQuery(q, state);
 
   return (
     <>
@@ -115,67 +60,141 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
           size="lg"
           hidden={{ ...(lang ? { lang } : {}), ...(state.sort ? { sort: state.sort } : {}) }}
         />
-        <SpellingChips
-          added={expanded.added}
-          excluded={state.excluded}
-          exact={state.exact}
-          removeHref={(v) => view({ x: [...state.excluded, v] })}
-          resetHref={view({ x: undefined })}
-          exactHref={(on) => view({ exact: on ? '1' : undefined, x: undefined })}
-        />
+        <Suspense fallback={<div className="mt-3 h-7" />}>
+          <Chips expanded={expanded} state={state} sp={sp} />
+        </Suspense>
         <div className="mt-6 space-y-3">
           <LanguagePicker current={lang} href={(code) => view({ lang: code })} />
           <SortPicker current={state.sort} href={(sortKey) => view({ sort: sortKey })} />
         </div>
-        <SummaryLine groups={groups} />
       </div>
+      <Groups sp={sp} state={state} expanded={expanded} />
+    </>
+  );
+}
 
-      {groups.length === 0 ? (
-        <Empty title={`Nothing found for “${q}”.`}>
-          <p>
-            {lang
-              ? `Nothing in ${languageFilterName(lang)}. Try “Any” language, or a different spelling.`
-              : 'Try fewer words, a different spelling, or an author’s surname on its own.'}
-          </p>
-        </Empty>
-      ) : null}
+async function Chips({ expanded, state, sp }: { expanded: Promise<ExpandedQuery>; state: SearchState; sp: RawParams }) {
+  const e = await expanded;
+  const view = (changes: Record<string, string | string[] | undefined>) => hrefWith('/search', sp, changes);
+  return (
+    <SpellingChips
+      added={e.added}
+      excluded={state.excluded}
+      exact={state.exact}
+      removeHref={(v) => view({ x: [...state.excluded, v] })}
+      resetHref={view({ x: undefined })}
+      exactHref={(on) => view({ exact: on ? '1' : undefined, x: undefined })}
+    />
+  );
+}
 
+interface GroupMeta {
+  id: string;
+  title: string;
+  /** How the group reads inside the summary sentence, after its count. */
+  summary: string;
+  href: string;
+}
+
+type GroupData = { kind: 'works'; page: Page<WorkCard> } | { kind: 'items'; section: SectionId; page: Page<ItemCard> };
+type PendingGroup = { meta: GroupMeta; data: Promise<GroupData | null> };
+
+function Groups({ sp, state, expanded }: { sp: RawParams; state: SearchState; expanded: Promise<ExpandedQuery> }) {
+  const { lang } = state;
+  const sort = state.sort ? [...SORTS[state.sort].archive] : undefined;
+  const carry = (path: string, extra: Record<string, string> = {}) => hrefWith(path, sp, extra);
+
+  // Every fetch starts now, in parallel; each group awaits only its own.
+  const groups: PendingGroup[] = [
+    {
+      meta: { id: 'books', title: 'Books', summary: 'catalogued books', href: carry('/books') },
+      data: expanded.then(async (e): Promise<GroupData | null> => {
+        if (!e.ol) return null;
+        const page = await attempt(() => searchWorks({ query: e.ol, pageSize: PREVIEW, language: lang }));
+        return page ? { kind: 'works', page } : null;
+      }),
+    },
+    {
+      meta: { id: 'archive', title: 'More on archive.org', summary: 'scans on archive.org', href: carry('/books', { source: 'archive' }) },
+      data: expanded.then(async (e): Promise<GroupData | null> => {
+        const page = await attempt(() => searchTexts(e.lucene, 1, PREVIEW, lang, sort));
+        return page ? { kind: 'items', section: 'books', page } : null;
+      }),
+    },
+    ...ARCHIVE_SECTIONS.map(
+      (section): PendingGroup => ({
+        meta: {
+          id: section,
+          title: SECTIONS[section].name,
+          summary: `in ${SECTIONS[section].name.toLowerCase()}`,
+          href: carry(`/${section}`),
+        },
+        data: expanded.then(async (e): Promise<GroupData | null> => {
+          const page = await attempt(() => searchSection(section, e.lucene, 1, lang, sort, PREVIEW));
+          return page ? { kind: 'items', section, page } : null;
+        }),
+      }),
+    ),
+  ];
+
+  return (
+    <>
+      <Suspense fallback={<LineSkeleton className="-mt-6 mb-10 w-2/3" />}>
+        <Summary groups={groups} q={state.q!} lang={lang} />
+      </Suspense>
       {groups.map((g) => (
-        <section key={g.id} id={g.id} className="scroll-mt-8 border-t border-rule pt-10 pb-14">
-          <div className="mb-8 flex items-baseline justify-between gap-4">
-            <h2 className="font-serif text-2xl text-ink">{g.title}</h2>
-            {g.total > PREVIEW ? (
-              <Link href={g.href} className="shrink-0 text-sm text-ink-soft underline-offset-4 hover:text-accent hover:underline">
-                See all {g.total.toLocaleString('en')}
-              </Link>
-            ) : null}
-          </div>
-          {g.body}
-        </section>
+        <Suspense key={g.meta.id} fallback={<SectionSkeleton title={g.meta.title} />}>
+          <Group meta={g.meta} data={g.data} />
+        </Suspense>
       ))}
     </>
   );
 }
 
-interface Group {
-  id: string;
-  title: string;
-  /** How the group reads inside the summary sentence, after its count. */
-  summary: string;
-  total: number;
-  href: string;
-  body: React.ReactNode;
+async function Group({ meta, data }: PendingGroup) {
+  const d = await data;
+  if (!d || d.page.total === 0) return null;
+  return (
+    <section id={meta.id} className="scroll-mt-8 border-t border-rule pt-10 pb-14">
+      <div className="mb-8 flex items-baseline justify-between gap-4">
+        <h2 className="font-serif text-2xl text-ink">{meta.title}</h2>
+        {d.page.total > PREVIEW ? (
+          <Link href={meta.href} className="shrink-0 text-sm text-ink-soft underline-offset-4 hover:text-accent hover:underline">
+            See all {d.page.total.toLocaleString('en')}
+          </Link>
+        ) : null}
+      </div>
+      <TileGrid>
+        {d.kind === 'works'
+          ? d.page.results.slice(0, PREVIEW).map((w) => <WorkTile key={w.workId} work={w} />)
+          : d.page.results.slice(0, PREVIEW).map((c) => <ItemTile key={c.identifier} card={c} section={d.section} />)}
+      </TileGrid>
+    </section>
+  );
 }
 
-function SummaryLine({ groups }: { groups: Group[] }) {
-  if (groups.length === 0) return null;
+/** "Found 3 catalogued books, 309 scans…": waits for every group, so it arrives last. */
+async function Summary({ groups, q, lang }: { groups: PendingGroup[]; q: string; lang?: string }) {
+  const settled = await Promise.all(groups.map(async (g) => ({ meta: g.meta, data: await g.data })));
+  const found = settled.filter((g) => g.data && g.data.page.total > 0);
+  if (found.length === 0) {
+    return (
+      <Empty title={`Nothing found for “${q}”.`}>
+        <p>
+          {lang
+            ? `Nothing in ${languageFilterName(lang)}. Try “Any” language, or a different spelling.`
+            : 'Try fewer words, a different spelling, or an author’s surname on its own.'}
+        </p>
+      </Empty>
+    );
+  }
   return (
-    <p className="mt-4 text-ink-soft">
-      {groups.map((g, i) => (
-        <span key={g.id}>
-          {i > 0 ? (i === groups.length - 1 ? ' and ' : ', ') : 'Found '}
-          <a href={`#${g.id}`} className="text-ink underline-offset-4 hover:underline">
-            {g.total.toLocaleString('en')} {g.summary}
+    <p className="-mt-6 mb-10 text-ink-soft">
+      {found.map((g, i) => (
+        <span key={g.meta.id}>
+          {i > 0 ? (i === found.length - 1 ? ' and ' : ', ') : 'Found '}
+          <a href={`#${g.meta.id}`} className="text-ink underline-offset-4 hover:underline">
+            {g.data!.page.total.toLocaleString('en')} {g.meta.summary}
           </a>
         </span>
       ))}
@@ -183,4 +202,3 @@ function SummaryLine({ groups }: { groups: Group[] }) {
     </p>
   );
 }
-

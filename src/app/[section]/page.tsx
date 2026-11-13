@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
 import { Pager } from '@/components/Pager';
 import { SearchBox } from '@/components/SearchBox';
+import { TilesSkeleton } from '@/components/Skeletons';
 import { SelectAllButton } from '@/components/SelectToggle';
 import { LanguagePicker } from '@/components/LanguagePicker';
 import { SaveShelfButton } from '@/components/ShelfButtons';
@@ -44,7 +46,23 @@ export default async function SectionPage({ params, searchParams }: { params: Pa
     <>
       <PageHeading title={cfg.name} lede={cfg.tagline} />
       {state.q ? (
-        <Results section={section} sp={sp} state={state} hidden={hidden} />
+        <>
+          <div className="mb-6 max-w-2xl">
+            <SearchBox action={`/${section}`} placeholder={`Search ${cfg.name.toLowerCase()}`} defaultValue={state.q} hidden={hidden} />
+            <Suspense fallback={<div className="mt-3 h-7" />}>
+              <Spellings path={`/${section}`} sp={sp} state={state} />
+            </Suspense>
+          </div>
+          <div className="mb-5">
+            <LanguagePicker current={state.lang} href={(code) => hrefWith(`/${section}`, sp, { lang: code })} />
+          </div>
+          <div className="mb-10">
+            <SortPicker current={state.sort} href={(s) => hrefWith(`/${section}`, sp, { sort: s })} />
+          </div>
+          <Suspense key={JSON.stringify(sp)} fallback={<TilesSkeleton count={12} shape="page" />}>
+            <Results section={section} sp={sp} state={state} />
+          </Suspense>
+        </>
       ) : (
         <>
           <div className="mb-12 max-w-2xl">
@@ -78,17 +96,22 @@ async function Publications({ section, page }: { section: SectionId; page: numbe
   );
 }
 
-async function Results({
-  section,
-  sp,
-  state,
-  hidden,
-}: {
-  section: SectionId;
-  sp: RawParams;
-  state: SearchState;
-  hidden: Record<string, string>;
-}) {
+async function Spellings({ path, sp, state }: { path: string; sp: RawParams; state: SearchState }) {
+  const expanded = await expandQuery(state.q!, state);
+  const view = (changes: Record<string, string | string[] | undefined>) => hrefWith(path, sp, changes);
+  return (
+    <SpellingChips
+      added={expanded.added}
+      excluded={state.excluded}
+      exact={state.exact}
+      removeHref={(v) => view({ x: [...state.excluded, v] })}
+      resetHref={view({ x: undefined })}
+      exactHref={(on) => view({ exact: on ? '1' : undefined, x: undefined })}
+    />
+  );
+}
+
+async function Results({ section, sp, state }: { section: SectionId; sp: RawParams; state: SearchState }) {
   const cfg = SECTIONS[section];
   const q = state.q!;
   const path = `/${section}`;
@@ -96,29 +119,10 @@ async function Results({
   const expanded = await expandQuery(q, state);
   const sort = state.sort ? [...SORTS[state.sort].archive] : undefined;
   const results = await attempt(() => searchSection(section, expanded.lucene, state.page, state.lang, sort));
-  const view = (changes: Record<string, string | string[] | undefined>) => hrefWith(path, sp, changes);
   const langName = languageFilterName(state.lang);
 
   return (
     <>
-      <div className="mb-6 max-w-2xl">
-        <SearchBox action={path} placeholder={`Search ${cfg.name.toLowerCase()}`} defaultValue={q} hidden={hidden} />
-        <SpellingChips
-          added={expanded.added}
-          excluded={state.excluded}
-          exact={state.exact}
-          removeHref={(v) => view({ x: [...state.excluded, v] })}
-          resetHref={view({ x: undefined })}
-          exactHref={(on) => view({ exact: on ? '1' : undefined, x: undefined })}
-        />
-      </div>
-      <div className="mb-5">
-        <LanguagePicker current={state.lang} href={(code) => view({ lang: code })} />
-      </div>
-      <div className="mb-10">
-        <SortPicker current={state.sort} href={(s) => view({ sort: s })} />
-      </div>
-
       {!results ? (
         <Unreachable what="results" />
       ) : results.results.length === 0 ? (

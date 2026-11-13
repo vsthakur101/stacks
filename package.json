@@ -8,6 +8,9 @@
     "dev": "next dev --hostname 127.0.0.1 --port 3000",
     "build": "next build",
     "start": "next start --hostname 127.0.0.1 --port 3000",
+    "app": "next build && next start --hostname 127.0.0.1 --port 3000",
+    "autostart:on": "sh scripts/autostart.sh on",
+    "autostart:off": "sh scripts/autostart.sh off",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -28,6 +31,7 @@
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "tailwind-merge": "3.7.0",
+    "undici": "7.30.2",
     "zod": "4.6.7",
     "zustand": "5.1.0"
   },

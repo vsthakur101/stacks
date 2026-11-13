@@ -1,5 +1,6 @@
 import { getDb } from '../db/client';
 import { pruneCache } from '../http';
+import { startConnectionWarming } from '../net';
 import { getSettings } from '../settings';
 import { DownloadManager } from './manager';
 
@@ -20,6 +21,7 @@ export function getManager(): DownloadManager {
       /* cache pruning is best-effort */
     }
     manager.init();
+    startConnectionWarming();
   }
   return globalForManager.__stacksManager;
 }

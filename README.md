@@ -8,13 +8,20 @@ Personal tool: runs on your Mac at `http://127.0.0.1:3000` and is not reachable 
 
 ```bash
 npm install
-npm run build
-npm start
+npm run app
 ```
 
-Open http://127.0.0.1:3000. Downloads go to `~/Books/Archive` by default (change it under Settings).
+`npm run app` builds and starts the fast production version at http://127.0.0.1:3000. Use it day to day: `npm run dev` rebuilds pages as you visit them and is 1–3 s slower per page.
 
-For development: `npm run dev`. Tests: `npm test`. Types: `npm run typecheck`.
+To have Stacks start whenever you log in (a macOS login item, logs in `~/Library/Logs/stacks.log`):
+
+```bash
+npm run autostart:on
+```
+
+`npm run autostart:off` removes it. After pulling new code, run `npm run autostart:on` again to rebuild.
+
+Downloads go to `~/Books/Archive` by default (change it under Settings). Tests: `npm test`. Types: `npm run typecheck`.
 
 ## How it works
 
@@ -24,6 +31,7 @@ For development: `npm run dev`. Tests: `npm test`. Types: `npm run typecheck`.
 - **Home:** your recent searches (one per query, reopening the view you used last) and any search you saved with "Save as a shelf on Home".
 - **Already downloaded:** covers and issues you have on disk show a tick; the item page offers Open file and Show in Finder.
 - **Call slip:** press + on any cover or issue to add it. The slip persists across pages. Choose **Download**, pick one format, and the local server fetches every item into `<folder>/<Section>/…`.
+- **Speed:** pages stream: the search box and filters appear at once and each group of results fills in as its source answers. Cached results older than their freshness window are shown instantly and refreshed in the background. archive.org, Open Library and Google each get their own queue of 4 requests. Connections are kept open for 10 minutes and warmed at start-up and while you're active, because new connections from Node to archive.org intermittently stall for ~19 s (see `src/lib/server/net.ts`).
 - **Downloads:** 3 at a time by default. Interrupted downloads resume from the partial file (including after a restart), files are checked against archive.org's size and MD5, and files you already have are skipped.
 - **Limits:** borrow-only (lending library) scans are never downloaded. Missing formats are skipped or substituted, depending on the fallback you choose.
 

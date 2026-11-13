@@ -482,7 +482,7 @@ function isNetworkError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   if (error.name === 'TypeError' && /fetch failed|terminated|network/i.test(error.message)) return true;
   const code = (error as { code?: string }).code ?? (error.cause as { code?: string } | undefined)?.code;
-  return ['ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'EAI_AGAIN', 'UND_ERR_SOCKET', 'EPIPE'].includes(code ?? '');
+  return ['ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'EAI_AGAIN', 'UND_ERR_SOCKET', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'EPIPE'].includes(code ?? '');
 }
 
 function describeError(error: unknown): string {

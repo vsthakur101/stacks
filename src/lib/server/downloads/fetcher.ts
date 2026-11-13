@@ -3,6 +3,7 @@ import { once } from 'node:events';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import { USER_AGENT } from '../http';
+import { httpFetch } from '../net';
 
 export class HttpStatusError extends Error {
   constructor(
@@ -41,7 +42,7 @@ export interface DownloadOptions {
 export async function downloadToFile(opts: DownloadOptions): Promise<void> {
   const { url, partPath, expectedSize, signal, onProgress } = opts;
   const stallMs = opts.stallMs ?? 60_000;
-  const doFetch = opts.fetchImpl ?? fetch;
+  const doFetch = opts.fetchImpl ?? (httpFetch as unknown as typeof fetch);
 
   let offset = await fileSizeOrZero(partPath);
   if (expectedSize !== null && offset > expectedSize) {

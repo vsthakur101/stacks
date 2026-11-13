@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { LanguagePicker } from '@/components/LanguagePicker';
 import { Pager } from '@/components/Pager';
 import { SearchBox } from '@/components/SearchBox';
+import { TilesSkeleton } from '@/components/Skeletons';
 import { Segmented } from '@/components/Segmented';
 import { SelectAllButton } from '@/components/SelectToggle';
 import { SaveShelfButton } from '@/components/ShelfButtons';
@@ -59,7 +61,20 @@ export default async function BooksPage({ searchParams }: { searchParams: Search
     <>
       <PageHeading title={SECTIONS.books.name} lede={SECTIONS.books.tagline} />
       {state.q ? (
-        <SearchResults sp={sp} state={state} source={source} borrow={borrow} hidden={hidden} />
+        <>
+          <div className="mb-6 max-w-2xl">
+            <SearchBox action="/books" placeholder="Title, author or subject, in any script" defaultValue={state.q} hidden={hidden} />
+            <Suspense fallback={<div className="mt-3 h-7" />}>
+              <Spellings sp={sp} state={state} />
+            </Suspense>
+          </div>
+          <div className="mb-5">
+            <LanguagePicker current={state.lang} href={(code) => hrefWith('/books', sp, { lang: code })} />
+          </div>
+          <Suspense key={JSON.stringify(sp)} fallback={<ResultsSkeleton />}>
+            <SearchResults sp={sp} state={state} source={source} borrow={borrow} />
+          </Suspense>
+        </>
       ) : (
         <>
           <div className="mb-6 max-w-2xl">
@@ -69,6 +84,30 @@ export default async function BooksPage({ searchParams }: { searchParams: Search
         </>
       )}
     </>
+  );
+}
+
+function ResultsSkeleton() {
+  return (
+    <>
+      <div className="mb-10 h-9 w-[28rem] max-w-full rounded-full border border-rule" />
+      <TilesSkeleton count={12} />
+    </>
+  );
+}
+
+async function Spellings({ sp, state }: { sp: RawParams; state: SearchState }) {
+  const expanded = await expandQuery(state.q!, state);
+  const view = (changes: Record<string, string | string[] | undefined>) => hrefWith('/books', sp, changes);
+  return (
+    <SpellingChips
+      added={expanded.added}
+      excluded={state.excluded}
+      exact={state.exact}
+      removeHref={(v) => view({ x: [...state.excluded, v] })}
+      resetHref={view({ x: undefined })}
+      exactHref={(on) => view({ exact: on ? '1' : undefined, x: undefined })}
+    />
   );
 }
 
@@ -112,13 +151,11 @@ async function SearchResults({
   state,
   source,
   borrow,
-  hidden,
 }: {
   sp: RawParams;
   state: SearchState;
   source: Source;
   borrow: boolean;
-  hidden: Record<string, string>;
 }) {
   const q = state.q!;
   recordSearch('/books', sp);
@@ -147,20 +184,6 @@ async function SearchResults({
 
   return (
     <>
-      <div className="mb-6 max-w-2xl">
-        <SearchBox action="/books" placeholder="Title, author or subject, in any script" defaultValue={q} hidden={hidden} />
-        <SpellingChips
-          added={expanded.added}
-          excluded={state.excluded}
-          exact={state.exact}
-          removeHref={(v) => view({ x: [...state.excluded, v] })}
-          resetHref={view({ x: undefined })}
-          exactHref={(on) => view({ exact: on ? '1' : undefined, x: undefined })}
-        />
-      </div>
-      <div className="mb-5">
-        <LanguagePicker current={state.lang} href={(code) => view({ lang: code })} />
-      </div>
       <div className="mb-10 flex flex-wrap items-center gap-3">
         <Segmented
           label="Where to search"
