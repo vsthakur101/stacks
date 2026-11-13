@@ -54,3 +54,10 @@ export function languageFilterName(code: string | undefined): string | undefined
   if (code === OTHER_LANGUAGE) return 'other or unknown languages';
   return findLanguage(code)?.name;
 }
+
+/** Our language code for an archive.org language value ("hin", "Hindi", "hindi"…), or OTHER_LANGUAGE. */
+export function languageCodeFor(raw: string | undefined): string {
+  const value = raw?.trim().toLowerCase();
+  if (!value) return OTHER_LANGUAGE;
+  return LANGUAGES.find((l) => l.archiveTerms.some((t) => t.toLowerCase() === value))?.code ?? OTHER_LANGUAGE;
+}

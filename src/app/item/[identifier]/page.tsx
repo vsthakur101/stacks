@@ -44,7 +44,7 @@ export default async function ItemPage({ params, searchParams }: { params: Param
   const section = isSectionId(sParam) ? sParam : sectionOf(item.collections);
   const publication = str(sp.p);
   const formats = [...availability(item.files).entries()];
-  const onDisk = filesFor(identifier);
+  const onDisk = await filesFor(identifier);
   const description = plainText(item.description);
   const details: [string, string | undefined][] = [
     ['Date', formatDisplayDate(item.date)],

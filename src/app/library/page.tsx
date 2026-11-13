@@ -1,0 +1,167 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { Cover } from '@/components/Cover';
+import { FileButtons } from '@/components/FileButtons';
+import { FilterBar, type FilterMenuSpec } from '@/components/FilterBar';
+import { languageMenu } from '@/components/filterMenus';
+import { SearchBox } from '@/components/SearchBox';
+import { Empty, PageHeading } from '@/components/States';
+import { itemHref, TileGrid } from '@/components/Tiles';
+import { formatBytesServer } from '@/lib/format';
+import { SECTIONS } from '@/lib/server/catalog/sections';
+import { buildLibrary, LIBRARY_SORTS, type LibraryEntry, type LibrarySort } from '@/lib/server/library/view';
+import { str, type SearchParams } from '@/lib/server/pageParams';
+import { hrefWith } from '@/lib/server/search/params';
+import { getSettings } from '@/lib/server/settings';
+import { parseLanguageFilter } from '@/lib/shared/languages';
+import { isSectionId, SECTION_IDS } from '@/lib/shared/types';
+
+export const dynamic = 'force-dynamic';
+export const metadata: Metadata = { title: 'My library' };
+
+/**
+ * Everything in the download folder. Built from the folder itself (see library/scan.ts), so it
+ * survives clearing download history; details come from cache only, so it always loads at once.
+ */
+export default async function LibraryPage({ searchParams }: { searchParams: SearchParams }) {
+  const sp = await searchParams;
+  const q = str(sp.q);
+  const sectionParam = str(sp.section);
+  const section = isSectionId(sectionParam) ? sectionParam : undefined;
+  const lang = parseLanguageFilter(str(sp.lang));
+  const sortParam = str(sp.sort);
+  const sort: LibrarySort = sortParam && sortParam in LIBRARY_SORTS ? (sortParam as LibrarySort) : 'recent';
+  const root = getSettings().downloadRoot;
+  const lib = await buildLibrary(root, { q, section, lang, sort });
+  const view = (changes: Record<string, string | undefined>) => hrefWith('/library', sp, changes);
+
+  if (lib.totalItems === 0 && lib.others.length === 0 && !q) {
+    return (
+      <>
+        <PageHeading title="My library" />
+        <Empty title="Nothing downloaded yet.">
+          <p>
+            Select items with the + on any cover, then choose Review and download. Everything you download appears here,
+            even after you clear the Downloads list.
+          </p>
+        </Empty>
+      </>
+    );
+  }
+
+  const menus: FilterMenuSpec[] = [
+    {
+      label: 'Section',
+      value: section ? SECTIONS[section].name : 'All',
+      active: Boolean(section),
+      options: [
+        { key: 'all', label: 'All sections', href: view({ section: undefined }), current: !section },
+        ...SECTION_IDS.filter((s) => lib.sections.includes(s)).map((s) => ({
+          key: s,
+          label: SECTIONS[s].name,
+          href: view({ section: s }),
+          current: section === s,
+        })),
+      ],
+    },
+    languageMenu(lang, (code) => view({ lang: code })),
+    {
+      label: 'Sort',
+      value: LIBRARY_SORTS[sort],
+      active: sort !== 'recent',
+      options: (Object.keys(LIBRARY_SORTS) as LibrarySort[]).map((k) => ({
+        key: k,
+        label: LIBRARY_SORTS[k],
+        href: view({ sort: k === 'recent' ? undefined : k }),
+        current: sort === k,
+      })),
+    },
+  ];
+
+  const filtered = Boolean(q || section || lang);
+  const hidden: Record<string, string> = {};
+  if (section) hidden.section = section;
+  if (lang) hidden.lang = lang;
+  if (sort !== 'recent') hidden.sort = sort;
+
+  return (
+    <>
+      <PageHeading
+        title="My library"
+        lede={`${lib.totalItems.toLocaleString('en')} ${lib.totalItems === 1 ? 'item' : 'items'}${
+          lib.others.length ? ` and ${lib.others.length} other ${lib.others.length === 1 ? 'file' : 'files'}` : ''
+        }, ${formatBytesServer(lib.totalBytes)} in ${root.replace(/^\/Users\/[^/]+/, '~')}`}
+      />
+      <div className="mb-8 max-w-3xl space-y-4">
+        <SearchBox action="/library" placeholder="Search your library" defaultValue={q} hidden={hidden} />
+        <FilterBar menus={menus} />
+      </div>
+
+      {lib.entries.length === 0 ? (
+        <Empty title={filtered ? 'Nothing in your library matches.' : 'No downloaded items yet.'}>
+          {filtered ? (
+            <p>
+              <Link href="/library" className="text-accent underline underline-offset-4">
+                Show everything
+              </Link>
+            </p>
+          ) : null}
+        </Empty>
+      ) : (
+        <>
+          {filtered ? (
+            <p className="mb-6 text-ink-soft">
+              Showing {lib.entries.length.toLocaleString('en')} of {lib.totalItems.toLocaleString('en')}.
+            </p>
+          ) : null}
+          <TileGrid>
+            {lib.entries.map((e) => (
+              <LibraryTile key={e.identifier} entry={e} />
+            ))}
+          </TileGrid>
+        </>
+      )}
+
+      {lib.others.length > 0 ? (
+        <section className="t-section mt-14">
+          <h2 className="font-display text-2xl text-ink">Other files</h2>
+          <p className="mt-1 mb-5 text-sm text-ink-soft">In your download folder, but not downloaded by Stacks.</p>
+          <ul className="divide-y divide-rule border-y border-rule">
+            {lib.others.map((f) => (
+              <li key={f.relative} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 py-3">
+                <span className="min-w-0">
+                  <span className="font-title block truncate text-ink">{f.name}</span>
+                  <span className="block text-sm text-ink-faint">
+                    {f.relative.includes('/') ? `${f.relative.slice(0, f.relative.lastIndexOf('/'))}, ` : ''}
+                    {formatBytesServer(f.size)}
+                  </span>
+                </span>
+                <FileButtons target={{ file: f.relative }} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </>
+  );
+}
+
+function LibraryTile({ entry }: { entry: LibraryEntry }) {
+  const formats = [...new Set(entry.files.map((f) => f.ext.toUpperCase()).filter(Boolean))].join(', ');
+  // With several files, Open shows their folder (the API does the same).
+  return (
+    <li>
+      <Link href={itemHref(entry.identifier, entry.section)} className="group block">
+        <Cover src={entry.thumbnail} title={entry.title} subtitle={entry.date} shape={entry.section === 'books' ? 'book' : 'page'} />
+        <h3 className="font-title mt-3.5 line-clamp-2 text-[1.05rem] text-ink group-hover:text-accent">{entry.title}</h3>
+      </Link>
+      <p className="mt-1 text-sm text-ink-soft">
+        {entry.files.length > 1 ? `${entry.files.length} files` : formats}
+        {entry.files.length > 1 && formats ? ` (${formats})` : ''}, {formatBytesServer(entry.bytes)}
+      </p>
+      <div className="mt-1.5">
+        <FileButtons target={{ identifier: entry.identifier }} multiple={entry.files.length > 1} />
+      </div>
+    </li>
+  );
+}

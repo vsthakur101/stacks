@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { openDb, setDbForTests } from '../db/client';
 import { downloadJobs, downloadTasks } from '../db/schema';
 import { downloadedFiles } from '../downloads/library';
+import { invalidateLibraryScan } from '../library/scan';
+import { saveSettings } from '../settings';
 import { clearSearchHistory, deleteShelf, listShelves, recentSearches, recordSearch, saveShelf } from './library';
 
 let handle: ReturnType<typeof openDb>;
@@ -59,19 +61,30 @@ describe('saved shelves', () => {
 });
 
 describe('downloadedFiles', () => {
-  it('lists finished downloads whose files still exist', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stacks-lib-'));
-    const kept = path.join(dir, 'kept.pdf');
+  it('merges the download folder with history, and survives cleared history', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'stacks-root-'));
+    const elsewhere = fs.mkdtempSync(path.join(os.tmpdir(), 'stacks-elsewhere-'));
+    saveSettings({ downloadRoot: root, concurrency: 3 });
+
+    // In the folder, with no history at all (as after "Clear finished").
+    fs.mkdirSync(path.join(root, 'Books'));
+    const scanned = path.join(root, 'Books', 'Pride and Prejudice (1813) [pp].pdf');
+    fs.writeFileSync(scanned, 'x');
+    // In history only (the download folder was changed later).
+    const kept = path.join(elsewhere, 'kept.pdf');
     fs.writeFileSync(kept, 'x');
     const now = Date.now();
     handle.db.insert(downloadJobs).values({ id: 'j', createdAt: now, format: 'pdf', fallback: 'skip', itemCount: 3 }).run();
     const task = (id: string, identifier: string, state: string, destPath: string) =>
       handle.db.insert(downloadTasks).values({ id, jobId: 'j', seq: 0, identifier, itemJson: '{}', state, destPath, updatedAt: now }).run();
     task('t1', 'kept', 'done', kept);
-    task('t2', 'deleted', 'done', path.join(dir, 'gone.pdf'));
+    task('t2', 'deleted', 'done', path.join(elsewhere, 'gone.pdf'));
     task('t3', 'failed', 'failed', kept);
+    invalidateLibraryScan();
 
-    expect([...downloadedFiles().entries()]).toEqual([['kept', [kept]]]);
-    fs.rmSync(dir, { recursive: true, force: true });
+    const files = await downloadedFiles();
+    expect(Object.fromEntries(files)).toEqual({ pp: [scanned], kept: [kept] });
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(elsewhere, { recursive: true, force: true });
   });
 });

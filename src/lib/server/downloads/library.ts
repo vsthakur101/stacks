@@ -2,28 +2,37 @@ import { and, desc, eq, isNotNull } from 'drizzle-orm';
 import fs from 'node:fs';
 import { getDb } from '../db/client';
 import { downloadTasks } from '../db/schema';
+import { scanLibrary } from '../library/scan';
+import { getSettings } from '../settings';
 
 /**
- * What's on disk: finished downloads whose files still exist. The DB says what we fetched; the
- * existence check covers files the owner has since moved or deleted.
+ * What's on disk, per archive.org identifier. Two sources, merged:
+ * - the download folder itself (survives "Clear finished" and files moved within the folder);
+ * - finished downloads in history whose files still exist (covers a download folder changed later).
  */
-export function downloadedFiles(): Map<string, string[]> {
+export async function downloadedFiles(): Promise<Map<string, string[]>> {
+  const out = new Map<string, string[]>();
+  const add = (identifier: string, file: string) => {
+    const list = out.get(identifier) ?? [];
+    if (!list.includes(file)) list.push(file);
+    out.set(identifier, list);
+  };
+
+  const scan = await scanLibrary(getSettings().downloadRoot);
+  for (const item of scan.items) for (const f of item.files) add(item.identifier, f.path);
+
   const rows = getDb()
     .select({ identifier: downloadTasks.identifier, destPath: downloadTasks.destPath })
     .from(downloadTasks)
     .where(and(eq(downloadTasks.state, 'done'), isNotNull(downloadTasks.destPath)))
     .orderBy(desc(downloadTasks.updatedAt))
     .all();
-  const out = new Map<string, string[]>();
   for (const { identifier, destPath } of rows) {
-    if (!destPath || !fs.existsSync(destPath)) continue;
-    const list = out.get(identifier) ?? [];
-    if (!list.includes(destPath)) list.push(destPath);
-    out.set(identifier, list);
+    if (destPath && fs.existsSync(destPath)) add(identifier, destPath);
   }
   return out;
 }
 
-export function filesFor(identifier: string): string[] {
-  return downloadedFiles().get(identifier) ?? [];
+export async function filesFor(identifier: string): Promise<string[]> {
+  return (await downloadedFiles()).get(identifier) ?? [];
 }

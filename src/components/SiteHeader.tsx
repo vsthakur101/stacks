@@ -47,6 +47,7 @@ export function SiteHeader() {
         </nav>
         <div className="ml-auto flex items-center gap-6">
           <NavLink href="/search" label="Search" active={active('/search')} />
+          <NavLink href="/library" label="Library" active={active('/library')} />
           <NavLink href="/downloads" label="Downloads" active={active('/downloads')} />
           <Link
             href="/settings"

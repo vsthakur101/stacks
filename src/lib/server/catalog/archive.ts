@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { findLanguage, LANGUAGES, OTHER_LANGUAGE } from '@/lib/shared/languages';
 import type { ItemCard, Page, SectionId } from '@/lib/shared/types';
-import { getJson, TTL, UpstreamError } from '../http';
+import { getJson, peekJson, TTL, UpstreamError } from '../http';
 import { archiveThumb, cleanTitle, first, parseDate, realCollections } from './normalize';
 import { SECTIONS, sectionScope } from './sections';
 
@@ -240,7 +240,23 @@ export async function getItem(identifier: string): Promise<ItemMetadata & { stal
   const { data, stale } = await getJson(`${BASE}/metadata/${encodeURIComponent(identifier)}`, TTL.metadata, (raw) =>
     metadataSchema.parse(raw),
   );
-  if (!data.metadata || data.is_dark) throw new ItemNotFoundError(identifier);
+  const item = toItemMetadata(identifier, data);
+  if (!item) throw new ItemNotFoundError(identifier);
+  return { ...item, stale };
+}
+
+/**
+ * Item details from cache only, never waiting on the network (null if we've never fetched them).
+ * Missing or old details are fetched in the background for next time.
+ */
+export function peekItem(identifier: string): ItemMetadata | null {
+  if (!isSafeIdentifier(identifier)) return null;
+  const data = peekJson(`${BASE}/metadata/${encodeURIComponent(identifier)}`, TTL.metadata, (raw) => metadataSchema.parse(raw));
+  return data ? toItemMetadata(identifier, data) : null;
+}
+
+function toItemMetadata(identifier: string, data: z.infer<typeof metadataSchema>): ItemMetadata | null {
+  if (!data.metadata || data.is_dark) return null;
   const m = data.metadata;
   const collections = realCollections(m.collection);
   const date = parseDate(m.date, m.year);
@@ -262,7 +278,6 @@ export async function getItem(identifier: string): Promise<ItemMetadata & { stal
     collections,
     restricted,
     files: data.files ?? [],
-    stale,
   };
 }
 

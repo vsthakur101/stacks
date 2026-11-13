@@ -140,6 +140,22 @@ export async function getJson<T>(
   }
 }
 
+/**
+ * The cached copy of a URL, however old, without any network request; null if never fetched.
+ * If the copy is missing or past its TTL, a background fetch is started for next time.
+ * For pages that must render instantly from what we already know (the Library).
+ */
+export function peekJson<T>(url: string, ttlS: number, parse: (raw: unknown) => T): T | null {
+  const cached = getDb().select().from(httpCache).where(eq(httpCache.url, url)).get();
+  if (!cached || Date.now() - cached.fetchedAt >= cached.ttlS * 1000) revalidate(url, ttlS, parse, API_TIMEOUT_MS);
+  if (!cached) return null;
+  try {
+    return parse(JSON.parse(cached.body));
+  } catch {
+    return null;
+  }
+}
+
 /** Resolves when background refreshes have finished. Test helper. */
 export async function settled(): Promise<void> {
   while (revalidating.size > 0) await new Promise((r) => setTimeout(r, 5));

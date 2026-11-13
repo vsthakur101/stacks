@@ -8,5 +8,5 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   const denied = guard(req);
   if (denied) return denied;
-  return NextResponse.json({ data: { identifiers: [...downloadedFiles().keys()] } });
+  return NextResponse.json({ data: { identifiers: [...(await downloadedFiles()).keys()] } });
 }

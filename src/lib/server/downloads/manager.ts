@@ -22,6 +22,7 @@ import { downloadJobs, downloadTasks } from '../db/schema';
 import { downloadToFile, fileSizeOrZero, HttpStatusError, md5OfFile, StallError } from './fetcher';
 import { fileSize, resolveFiles } from './formats';
 import { absoluteDestination, relativeDestination } from './paths';
+import { invalidateLibraryScan } from '../library/scan';
 
 type TaskRow = typeof downloadTasks.$inferSelect;
 
@@ -386,6 +387,7 @@ export class DownloadManager extends EventEmitter {
     }
 
     await fsp.rename(part, dest);
+    invalidateLibraryScan();
     const size = await fileSizeOrZero(dest);
     this.update(task.id, { state: 'done', bytesDone: size, bytesTotal: task.bytesTotal ?? size });
   }

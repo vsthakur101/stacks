@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     return apiError(502, 'UPSTREAM_ERROR', 'Could not reach archive.org.');
   }
 
-  const onDisk = downloadedFiles();
+  const onDisk = await downloadedFiles();
   const response: FormatsResponse = {
     total: ids.length,
     downloaded: ids.filter((id) => onDisk.has(id)),
