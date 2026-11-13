@@ -26,11 +26,19 @@ export function openDb(file: string): DbHandle {
   return { db, sqlite };
 }
 
+/** Set once per evaluation of this module, so a dev-mode reload re-applies any new migrations. */
+let migratedThisLoad = false;
+
 /** Process-wide singleton, pinned on globalThis so dev-mode module reloads don't open a second handle. */
 export function getDb(): Db {
   if (!globalForDb.__stacksDb) {
     const file = process.env.STACKS_DB ?? path.join(process.cwd(), 'data', 'stacks.db');
     globalForDb.__stacksDb = openDb(file);
+    migratedThisLoad = true;
+  } else if (!migratedThisLoad) {
+    // The handle outlived a code reload; bring its schema up to date (idempotent, cheap).
+    migrate(globalForDb.__stacksDb.db, { migrationsFolder: path.join(process.cwd(), 'drizzle') });
+    migratedThisLoad = true;
   }
   return globalForDb.__stacksDb.db;
 }

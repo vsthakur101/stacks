@@ -9,7 +9,7 @@ export function Pager({
   pageSize,
 }: {
   path: string;
-  params: Record<string, string | undefined>;
+  params: Record<string, string | string[] | undefined>;
   page: number;
   total: number;
   pageSize: number;
@@ -18,7 +18,10 @@ export function Pager({
   if (last <= 1) return null;
   const href = (p: number) => {
     const q = new URLSearchParams();
-    for (const [k, v] of Object.entries(params)) if (v) q.set(k, v);
+    for (const [k, v] of Object.entries(params)) {
+      if (k === 'page' || !v) continue;
+      for (const value of Array.isArray(v) ? v : [v]) q.append(k, value);
+    }
     if (p > 1) q.set('page', String(p));
     const s = q.toString();
     return s ? `${path}?${s}` : path;

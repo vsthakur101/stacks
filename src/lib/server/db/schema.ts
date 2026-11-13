@@ -41,6 +41,29 @@ export const downloadTasks = sqliteTable(
   (t) => [index('idx_download_tasks_job_id').on(t.jobId), index('idx_download_tasks_state').on(t.state)],
 );
 
+/** One row per distinct search (path + params, page excluded). */
+export const searchHistory = sqliteTable(
+  'search_history',
+  {
+    key: text('key').primaryKey(),
+    path: text('path').notNull(),
+    paramsJson: text('params_json').notNull(),
+    label: text('label').notNull(),
+    lastUsedAt: integer('last_used_at').notNull(),
+    uses: integer('uses').notNull().default(1),
+  },
+  (t) => [index('idx_search_history_last_used_at').on(t.lastUsedAt)],
+);
+
+/** Searches the owner pinned to Home as shelves. */
+export const savedShelves = sqliteTable('saved_shelves', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  path: text('path').notNull(),
+  paramsJson: text('params_json').notNull(),
+  createdAt: integer('created_at').notNull(),
+});
+
 export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),

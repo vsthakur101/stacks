@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Cover } from '@/components/Cover';
+import { FileActions } from '@/components/FileActions';
 import { SelectToggle } from '@/components/SelectToggle';
 import { StaleNotice, Unreachable } from '@/components/States';
 import { formatBytesServer } from '@/lib/format';
@@ -10,6 +11,7 @@ import { archiveThumb, formatDisplayDate, plainText } from '@/lib/server/catalog
 import { SECTIONS } from '@/lib/server/catalog/sections';
 import { sectionOf } from '@/lib/server/catalog/sectionOf';
 import { availability } from '@/lib/server/downloads/formats';
+import { filesFor } from '@/lib/server/downloads/library';
 import { str, type SearchParams } from '@/lib/server/pageParams';
 import { FORMAT_LABELS, isSectionId } from '@/lib/shared/types';
 
@@ -42,6 +44,7 @@ export default async function ItemPage({ params, searchParams }: { params: Param
   const section = isSectionId(sParam) ? sParam : sectionOf(item.collections);
   const publication = str(sp.p);
   const formats = [...availability(item.files).entries()];
+  const onDisk = filesFor(identifier);
   const description = plainText(item.description);
   const details: [string, string | undefined][] = [
     ['Date', formatDisplayDate(item.date)],
@@ -77,6 +80,15 @@ export default async function ItemPage({ params, searchParams }: { params: Param
               ))}
           </dl>
 
+          {onDisk.length > 0 ? (
+            <section className="mt-8 border-l-2 border-accent pl-4">
+              <p className="mb-3 text-sm text-ink-soft">
+                Already downloaded: <span className="text-ink">{onDisk.map((f) => f.split('/').pop()).join(', ')}</span>
+              </p>
+              <FileActions identifier={identifier} multiple={onDisk.length > 1} />
+            </section>
+          ) : null}
+
           <div className="mt-8 flex flex-wrap items-center gap-3">
             {item.restricted ? (
               <>
@@ -94,7 +106,11 @@ export default async function ItemPage({ params, searchParams }: { params: Param
               <>
                 <Link
                   href={`/read/${identifier}`}
-                  className="rounded-full bg-accent px-6 py-2.5 text-sm font-medium text-accent-ink hover:opacity-90"
+                  className={
+                    onDisk.length > 0
+                      ? 'rounded-full border border-ink/25 px-6 py-2.5 text-sm text-ink hover:border-accent hover:text-accent'
+                      : 'rounded-full bg-accent px-6 py-2.5 text-sm font-medium text-accent-ink hover:opacity-90'
+                  }
                 >
                   Read
                 </Link>
@@ -122,8 +138,7 @@ export default async function ItemPage({ params, searchParams }: { params: Param
 
           {description ? (
             <div className="prose-reading mt-10 text-ink">
-              {description
-                .split(/\n{2,}/)
+              {[...new Set(description.split(/\n{2,}/).map((p) => p.trim()))]
                 .slice(0, 12)
                 .map((p, i) => (
                   <p key={i}>{p}</p>

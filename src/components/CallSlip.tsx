@@ -251,6 +251,12 @@ function FormatStep({ onBack, onStarted }: { onBack: () => void; onStarted: (cou
               </select>
             </label>
 
+            {formats.downloaded.length > 0 ? (
+              <p className="mt-5 text-sm text-ink-soft">
+                {formats.downloaded.length} of these {formats.downloaded.length === 1 ? 'is' : 'are'} already downloaded.
+                Files you already have in the chosen format are skipped.
+              </p>
+            ) : null}
             {formats.restricted.length > 0 ? (
               <p className="mt-5 text-sm text-ink-soft">
                 {formats.restricted.length} borrow-only {formats.restricted.length === 1 ? 'item' : 'items'} can’t be

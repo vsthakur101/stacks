@@ -67,11 +67,19 @@ export async function countArchive(query: string): Promise<number> {
 }
 
 /** Items (not collections) in a section matching user text. `text` must already be Lucene-escaped. */
-export function searchSection(section: SectionId, text: string, page: number, lang?: string): Promise<Page<ItemCard>> {
+export function searchSection(
+  section: SectionId,
+  text: string,
+  page: number,
+  lang?: string,
+  sort?: string[],
+  pageSize = 24,
+): Promise<Page<ItemCard>> {
   return searchArchive({
     query: `(${text}) AND mediatype:texts AND ${sectionScope(section)}${languageClause(lang)}`,
     page,
-    sort: [],
+    pageSize,
+    sort,
   });
 }
 
@@ -95,8 +103,8 @@ export function textsQuery(text: string, lang?: string): string {
  * All free scans on archive.org, not just those Open Library has catalogued. Many Indic texts
  * (e.g. Geeta Press volumes) exist only here. Relevance order.
  */
-export function searchTexts(text: string, page: number, pageSize = 24, lang?: string): Promise<Page<ItemCard>> {
-  return searchArchive({ query: textsQuery(text, lang), page, pageSize });
+export function searchTexts(text: string, page: number, pageSize = 24, lang?: string, sort?: string[]): Promise<Page<ItemCard>> {
+  return searchArchive({ query: textsQuery(text, lang), page, pageSize, sort });
 }
 
 /** The browse unit of a section: its publications (child collections), most-used first. */

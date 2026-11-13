@@ -4,6 +4,7 @@ import { FRIENDLY_FORMATS, type FormatsResponse, type FriendlyFormat } from '@/l
 import { apiError, guard, parseBody } from '@/lib/server/api';
 import { getItem } from '@/lib/server/catalog/archive';
 import { availability } from '@/lib/server/downloads/formats';
+import { downloadedFiles } from '@/lib/server/downloads/library';
 import { identifierSchema, MAX_TRAY_ITEMS } from '@/lib/server/validation';
 
 export const dynamic = 'force-dynamic';
@@ -47,8 +48,10 @@ export async function POST(req: Request) {
     return apiError(502, 'UPSTREAM_ERROR', 'Could not reach archive.org.');
   }
 
+  const onDisk = downloadedFiles();
   const response: FormatsResponse = {
     total: ids.length,
+    downloaded: ids.filter((id) => onDisk.has(id)),
     restricted,
     unavailable,
     formats: FRIENDLY_FORMATS.map((format) => ({

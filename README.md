@@ -19,6 +19,10 @@ For development: `npm run dev`. Tests: `npm test`. Types: `npm run typecheck`.
 ## How it works
 
 - **Catalog:** books come from Open Library (one clean record per book); everything else comes from archive.org's search and metadata APIs. Book searches can switch to "All scans on archive.org", which finds texts Open Library never catalogued (many Hindi and Sanskrit works, Geeta Press volumes). Every search can be narrowed by language; the list and archive.org's spelling variants live in `src/lib/shared/languages.ts`. Responses are cached in `data/stacks.db` (SQLite), so pages still load from cache when archive.org is down.
+- **Spellings:** a search also matches other spellings of Indic words (mahabharat → mahabharata, महाभारत), shown as removable chips under the search box. Devanagari forms come from Google Input Tools: only the individual non-English words are sent, cached for 30 days; if Google is unreachable, searching still works. "Exact spelling only" turns it off.
+- **Order:** archive.org results can be sorted by best match, most read, oldest or newest.
+- **Home:** your recent searches (one per query, reopening the view you used last) and any search you saved with "Save as a shelf on Home".
+- **Already downloaded:** covers and issues you have on disk show a tick; the item page offers Open file and Show in Finder.
 - **Call slip:** press + on any cover or issue to add it. The slip persists across pages. Choose **Download**, pick one format, and the local server fetches every item into `<folder>/<Section>/…`.
 - **Downloads:** 3 at a time by default. Interrupted downloads resume from the partial file (including after a restart), files are checked against archive.org's size and MD5, and files you already have are skipped.
 - **Limits:** borrow-only (lending library) scans are never downloaded. Missing formats are skipped or substituted, depending on the fallback you choose.

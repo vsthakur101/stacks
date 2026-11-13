@@ -14,6 +14,7 @@ export const TTL = {
   search: 60 * 60,
   metadata: 24 * 60 * 60,
   listing: 7 * 24 * 60 * 60,
+  transliteration: 30 * 24 * 60 * 60,
 } as const;
 
 export class UpstreamError extends Error {
@@ -37,7 +38,12 @@ export interface CachedJson<T> {
  * Fresh cache → returned without a request. Upstream failure with any cached copy → stale copy.
  * `parse` validates/normalizes the raw JSON and throws on shapes we can't use.
  */
-export async function getJson<T>(url: string, ttlS: number, parse: (raw: unknown) => T): Promise<CachedJson<T>> {
+export async function getJson<T>(
+  url: string,
+  ttlS: number,
+  parse: (raw: unknown) => T,
+  opts: { timeoutMs?: number } = {},
+): Promise<CachedJson<T>> {
   const db = getDb();
   const cached = db.select().from(httpCache).where(eq(httpCache.url, url)).get();
   const now = Date.now();
@@ -49,7 +55,7 @@ export async function getJson<T>(url: string, ttlS: number, parse: (raw: unknown
     const body = await apiLimit(async () => {
       const res = await fetch(url, {
         headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
-        signal: AbortSignal.timeout(API_TIMEOUT_MS),
+        signal: AbortSignal.timeout(opts.timeoutMs ?? API_TIMEOUT_MS),
         redirect: 'follow',
         cache: 'no-store',
       });

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { ItemCard, SectionId, TrayItem, WorkCard } from '@/lib/shared/types';
 import { Cover } from './Cover';
+import { DownloadedMark } from './DownloadedMark';
 import { SelectToggle, WorkSelectToggle } from './SelectToggle';
 
 export function itemToTray(card: ItemCard, section: SectionId, publication?: string): TrayItem {
@@ -38,7 +39,10 @@ export function WorkTile({ work }: { work: WorkCard }) {
   return (
     <li className="group relative">
       <Link href={`/books/${work.workId}`} className="block">
-        <Cover src={work.cover} title={work.title} subtitle={authors} />
+        <div className="relative">
+          <Cover src={work.cover} title={work.title} subtitle={authors} />
+          <DownloadedMark identifiers={work.scanIds} className="absolute right-2 bottom-2" />
+        </div>
         <h3 className="mt-3.5 line-clamp-2 font-serif text-[1.05rem] text-ink group-hover:text-accent">{work.title}</h3>
       </Link>
       {authors || work.year ? (
@@ -77,7 +81,10 @@ export function ItemTile({
   return (
     <li className="group relative">
       <Link href={target} className="block">
-        <Cover src={card.thumbnail} title={card.title} subtitle={meta} shape="page" />
+        <div className="relative">
+          <Cover src={card.thumbnail} title={card.title} subtitle={meta} shape="page" />
+          {card.isCollection ? null : <DownloadedMark identifiers={[card.identifier]} className="absolute right-2 bottom-2" />}
+        </div>
         <h3 className="mt-3.5 line-clamp-2 font-serif text-[1.05rem] text-ink group-hover:text-accent">{card.title}</h3>
       </Link>
       {meta ? <p className="mt-1 line-clamp-1 text-sm text-ink-soft">{meta}</p> : null}

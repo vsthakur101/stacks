@@ -77,6 +77,8 @@ export interface FormatsResponse {
   total: number;
   restricted: string[];
   unavailable: string[]; // metadata could not be loaded
+  /** Already in the download folder (any format). */
+  downloaded: string[];
   formats: FormatAvailability[];
 }
 

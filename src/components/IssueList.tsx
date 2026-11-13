@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { formatDisplayDate } from '@/lib/server/catalog/normalize';
 import type { ItemCard, SectionId } from '@/lib/shared/types';
+import { DownloadedMark } from './DownloadedMark';
 import { SelectAllButton, SelectToggle } from './SelectToggle';
 import { itemHref, itemToTray } from './Tiles';
 
@@ -53,6 +54,7 @@ function Rows({ issues, section, publication }: { issues: ItemCard[]; section: S
             </span>
             <span className="truncate text-sm text-ink-soft">{issue.title}</span>
           </Link>
+          <DownloadedMark identifiers={[issue.identifier]} className="shrink-0 shadow-none ring-1 ring-rule" />
         </li>
       ))}
     </ul>

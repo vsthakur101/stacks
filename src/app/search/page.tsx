@@ -2,15 +2,19 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SearchBox } from '@/components/SearchBox';
 import { LanguagePicker } from '@/components/LanguagePicker';
+import { SortPicker } from '@/components/SortPicker';
+import { SpellingChips } from '@/components/SpellingChips';
 import { Empty, PageHeading } from '@/components/States';
 import { ItemTile, TileGrid, WorkTile } from '@/components/Tiles';
 import { searchSection, searchTexts } from '@/lib/server/catalog/archive';
-import { escapeLucene } from '@/lib/server/catalog/normalize';
-import { olText, searchWorks } from '@/lib/server/catalog/openLibrary';
+import { searchWorks } from '@/lib/server/catalog/openLibrary';
 import { ARCHIVE_SECTIONS, SECTIONS } from '@/lib/server/catalog/sections';
 import { attempt, str, type SearchParams } from '@/lib/server/pageParams';
-import { languageFilterName, parseLanguageFilter } from '@/lib/shared/languages';
-import type { Page, WorkCard } from '@/lib/shared/types';
+import { recordSearch } from '@/lib/server/search/library';
+import { hrefWith, parseSearch, SORTS } from '@/lib/server/search/params';
+import { expandQuery } from '@/lib/server/search/variants';
+import { languageFilterName } from '@/lib/shared/languages';
+import type { WorkCard } from '@/lib/shared/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,8 +27,8 @@ const PREVIEW = 6;
 
 export default async function SearchPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
-  const q = str(sp.q);
-  const lang = parseLanguageFilter(str(sp.lang));
+  const state = parseSearch(sp);
+  const { q, lang } = state;
   if (!q) {
     return (
       <>
@@ -36,13 +40,16 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
     );
   }
 
-  const text = olText(q);
-  const lucene = escapeLucene(q);
-  const preview = <T,>(p: Page<T>): Page<T> => ({ ...p, results: p.results.slice(0, PREVIEW) });
+  recordSearch('/search', sp);
+  const expanded = await expandQuery(q, state);
+  const sort = state.sort ? [...SORTS[state.sort].archive] : undefined;
+  const view = (changes: Record<string, string | string[] | undefined>) => hrefWith('/search', sp, changes);
+  // Links into a section carry the language, order and spelling choices made here.
+  const carry = (path: string, extra: Record<string, string> = {}) => hrefWith(path, sp, extra);
   const [books, texts, ...others] = await Promise.all([
-    text ? attempt(() => searchWorks({ query: text, pageSize: PREVIEW, language: lang })) : Promise.resolve(null),
-    attempt(() => searchTexts(lucene, 1, PREVIEW, lang)),
-    ...ARCHIVE_SECTIONS.map((s) => attempt(() => searchSection(s, lucene, 1, lang).then(preview))),
+    expanded.ol ? attempt(() => searchWorks({ query: expanded.ol, pageSize: PREVIEW, language: lang })) : Promise.resolve(null),
+    attempt(() => searchTexts(expanded.lucene, 1, PREVIEW, lang, sort)),
+    ...ARCHIVE_SECTIONS.map((s) => attempt(() => searchSection(s, expanded.lucene, 1, lang, sort, PREVIEW))),
   ]);
 
   // Order: catalogued books, then every other scan on archive.org, then the archive sections.
@@ -53,7 +60,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
       title: 'Books',
       summary: 'catalogued books',
       total: books.total,
-      href: withLang(`/books?q=${encodeURIComponent(q)}`, lang),
+      href: carry('/books'),
       body: (
         <TileGrid>
           {books.results.map((w: WorkCard) => (
@@ -69,7 +76,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
       title: 'More on archive.org',
       summary: 'scans on archive.org',
       total: texts.total,
-      href: withLang(`/books?q=${encodeURIComponent(q)}&source=archive`, lang),
+      href: carry('/books', { source: 'archive' }),
       body: (
         <TileGrid>
           {texts.results.map((c) => (
@@ -87,7 +94,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
       title: SECTIONS[section].name,
       summary: `in ${SECTIONS[section].name.toLowerCase()}`,
       total: page.total,
-      href: withLang(`/${section}?q=${encodeURIComponent(q)}`, lang),
+      href: carry(`/${section}`),
       body: (
         <TileGrid>
           {page.results.map((c) => (
@@ -101,9 +108,24 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
   return (
     <>
       <div className="mb-12 max-w-3xl">
-        <SearchBox action="/search" placeholder="Search everything" defaultValue={q} size="lg" hidden={lang ? { lang } : undefined} />
-        <div className="mt-6">
-          <LanguagePicker current={lang} href={(code) => withLang(`/search?q=${encodeURIComponent(q)}`, code)} />
+        <SearchBox
+          action="/search"
+          placeholder="Search everything"
+          defaultValue={q}
+          size="lg"
+          hidden={{ ...(lang ? { lang } : {}), ...(state.sort ? { sort: state.sort } : {}) }}
+        />
+        <SpellingChips
+          added={expanded.added}
+          excluded={state.excluded}
+          exact={state.exact}
+          removeHref={(v) => view({ x: [...state.excluded, v] })}
+          resetHref={view({ x: undefined })}
+          exactHref={(on) => view({ exact: on ? '1' : undefined, x: undefined })}
+        />
+        <div className="mt-6 space-y-3">
+          <LanguagePicker current={lang} href={(code) => view({ lang: code })} />
+          <SortPicker current={state.sort} href={(sortKey) => view({ sort: sortKey })} />
         </div>
         <SummaryLine groups={groups} />
       </div>
@@ -162,6 +184,3 @@ function SummaryLine({ groups }: { groups: Group[] }) {
   );
 }
 
-function withLang(path: string, lang: string | undefined): string {
-  return lang ? `${path}&lang=${lang}` : path;
-}

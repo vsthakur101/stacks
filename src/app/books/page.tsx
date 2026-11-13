@@ -1,18 +1,23 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { LanguagePicker } from '@/components/LanguagePicker';
 import { Pager } from '@/components/Pager';
 import { SearchBox } from '@/components/SearchBox';
 import { Segmented } from '@/components/Segmented';
 import { SelectAllButton } from '@/components/SelectToggle';
-import { LanguagePicker } from '@/components/LanguagePicker';
+import { SaveShelfButton } from '@/components/ShelfButtons';
+import { SortPicker } from '@/components/SortPicker';
+import { SpellingChips } from '@/components/SpellingChips';
 import { Empty, PageHeading, StaleNotice, Unreachable } from '@/components/States';
 import { ItemTile, itemToTray, TileGrid, WorkTile } from '@/components/Tiles';
 import { searchTexts } from '@/lib/server/catalog/archive';
-import { escapeLucene } from '@/lib/server/catalog/normalize';
-import { olText, searchWorks } from '@/lib/server/catalog/openLibrary';
+import { searchWorks } from '@/lib/server/catalog/openLibrary';
 import { SECTIONS } from '@/lib/server/catalog/sections';
-import { attempt, pageNum, str, type SearchParams } from '@/lib/server/pageParams';
-import { parseLanguageFilter } from '@/lib/shared/languages';
+import { attempt, pageNum, type SearchParams } from '@/lib/server/pageParams';
+import { recordSearch } from '@/lib/server/search/library';
+import { hrefWith, parseSearch, SORTS, type RawParams, type SearchState } from '@/lib/server/search/params';
+import { expandQuery } from '@/lib/server/search/variants';
+import { languageFilterName } from '@/lib/shared/languages';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Books' };
@@ -37,42 +42,31 @@ const SUBJECTS = [
 
 type Source = 'catalogue' | 'archive';
 
-/** Builds a /books URL that keeps the query and only the params that apply. */
-function booksHref(q: string, source: Source, borrow = false, lang?: string): string {
-  const p = new URLSearchParams({ q });
-  if (source === 'archive') p.set('source', 'archive');
-  if (source === 'catalogue' && borrow) p.set('borrow', '1');
-  if (lang) p.set('lang', lang);
-  return `/books?${p}`;
-}
-
 export default async function BooksPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
-  const q = str(sp.q);
-  const page = pageNum(sp.page);
-  const source: Source = str(sp.source) === 'archive' ? 'archive' : 'catalogue';
-  const borrow = source === 'catalogue' && str(sp.borrow) === '1';
-  const lang = parseLanguageFilter(str(sp.lang));
+  const state = parseSearch(sp);
+  const source: Source = sp.source === 'archive' ? 'archive' : 'catalogue';
+  const borrow = source === 'catalogue' && sp.borrow === '1';
+
+  // A new search keeps the view (source, language, order, borrow) but not removed spellings.
   const hidden: Record<string, string> = {};
   if (source === 'archive') hidden.source = 'archive';
   if (borrow) hidden.borrow = '1';
-  if (lang) hidden.lang = lang;
+  if (state.lang) hidden.lang = state.lang;
+  if (state.sort) hidden.sort = state.sort;
 
   return (
     <>
       <PageHeading title={SECTIONS.books.name} lede={SECTIONS.books.tagline} />
-      <div className="mb-6 max-w-2xl">
-        <SearchBox
-          action="/books"
-          placeholder="Title, author or subject, in any script"
-          defaultValue={q}
-          hidden={hidden}
-        />
-      </div>
-      {q ? (
-        <SearchResults q={q} page={page} source={source} borrow={borrow} lang={lang} />
+      {state.q ? (
+        <SearchResults sp={sp} state={state} source={source} borrow={borrow} hidden={hidden} />
       ) : (
-        <Browse page={page} />
+        <>
+          <div className="mb-6 max-w-2xl">
+            <SearchBox action="/books" placeholder="Title, author or subject, in any script" hidden={hidden} />
+          </div>
+          <Browse page={pageNum(sp.page)} />
+        </>
       )}
     </>
   );
@@ -109,56 +103,83 @@ async function Browse({ page }: { page: number }) {
 }
 
 /**
- * Two sources behind one search box. Open Library has clean, grouped records but only for books it has
+ * Two sources behind one search box. Open Library has clean, grouped records for the books it has
  * catalogued; archive.org has every scan, including many Indic texts Open Library has never heard of.
  * Both counts are always shown, so the other source is never invisible.
  */
 async function SearchResults({
-  q,
-  page,
+  sp,
+  state,
   source,
   borrow,
-  lang,
+  hidden,
 }: {
-  q: string;
-  page: number;
+  sp: RawParams;
+  state: SearchState;
   source: Source;
   borrow: boolean;
-  lang?: string;
+  hidden: Record<string, string>;
 }) {
-  const ol = olText(q);
-  const lucene = escapeLucene(q);
+  const q = state.q!;
+  recordSearch('/books', sp);
+  const expanded = await expandQuery(q, state);
+  const sort = state.sort ? [...SORTS[state.sort].archive] : undefined;
+  const page = state.page;
   const [catalogue, archive] = await Promise.all([
-    ol
-      ? attempt(() => searchWorks({ query: ol, page: source === 'catalogue' ? page : 1, pageSize: source === 'catalogue' ? 24 : 1, includeBorrowable: borrow, language: lang }))
+    expanded.ol
+      ? attempt(() =>
+          searchWorks({
+            query: expanded.ol,
+            page: source === 'catalogue' ? page : 1,
+            pageSize: source === 'catalogue' ? 24 : 1,
+            includeBorrowable: borrow,
+            language: state.lang,
+          }),
+        )
       : Promise.resolve(null),
-    attempt(() => searchTexts(lucene, source === 'archive' ? page : 1, source === 'archive' ? 24 : 0, lang)),
+    attempt(() => searchTexts(expanded.lucene, source === 'archive' ? page : 1, source === 'archive' ? 24 : 0, state.lang, sort)),
   ]);
 
   const count = (n: number | undefined) => (n === undefined ? '' : ` (${n.toLocaleString('en')})`);
+  const view = (changes: Record<string, string | string[] | undefined>) => hrefWith('/books', sp, changes);
+  const langName = languageFilterName(state.lang);
+  const shelfTitle = langName ? `${q}, ${langName}` : q;
 
   return (
     <>
+      <div className="mb-6 max-w-2xl">
+        <SearchBox action="/books" placeholder="Title, author or subject, in any script" defaultValue={q} hidden={hidden} />
+        <SpellingChips
+          added={expanded.added}
+          excluded={state.excluded}
+          exact={state.exact}
+          removeHref={(v) => view({ x: [...state.excluded, v] })}
+          resetHref={view({ x: undefined })}
+          exactHref={(on) => view({ exact: on ? '1' : undefined, x: undefined })}
+        />
+      </div>
       <div className="mb-5">
-        <LanguagePicker current={lang} href={(code) => booksHref(q, source, borrow, code)} />
+        <LanguagePicker current={state.lang} href={(code) => view({ lang: code })} />
       </div>
       <div className="mb-10 flex flex-wrap items-center gap-3">
         <Segmented
           label="Where to search"
           options={[
-            { label: `Catalogued books${count(catalogue?.total)}`, href: booksHref(q, 'catalogue', borrow, lang), current: source === 'catalogue' },
-            { label: `All scans on archive.org${count(archive?.total)}`, href: booksHref(q, 'archive', false, lang), current: source === 'archive' },
+            { label: `Catalogued books${count(catalogue?.total)}`, href: view({ source: undefined, sort: undefined }), current: source === 'catalogue' },
+            { label: `All scans on archive.org${count(archive?.total)}`, href: view({ source: 'archive', borrow: undefined }), current: source === 'archive' },
           ]}
         />
         {source === 'catalogue' ? (
           <Segmented
             label="Which books"
             options={[
-              { label: 'Free to read', href: booksHref(q, 'catalogue', false, lang), current: !borrow },
-              { label: 'Include borrow-only', href: booksHref(q, 'catalogue', true, lang), current: borrow },
+              { label: 'Free to read', href: view({ borrow: undefined }), current: !borrow },
+              { label: 'Include borrow-only', href: view({ borrow: '1' }), current: borrow },
             ]}
           />
-        ) : null}
+        ) : (
+          <SortPicker current={state.sort} href={(s) => view({ sort: s })} />
+        )}
       </div>
 
       {source === 'catalogue' ? (
@@ -169,7 +190,7 @@ async function SearchResults({
             {archive && archive.total > 0 ? (
               <p>
                 archive.org has {archive.total.toLocaleString('en')} scans that match.{' '}
-                <Link href={booksHref(q, 'archive', false, lang)} className="text-accent underline underline-offset-4">
+                <Link href={view({ source: 'archive', borrow: undefined })} className="text-accent underline underline-offset-4">
                   Show them
                 </Link>
                 .
@@ -181,13 +202,16 @@ async function SearchResults({
         ) : (
           <>
             <StaleNotice stale={catalogue.stale} />
-            <h2 className="mb-6 font-serif text-xl text-ink">{catalogue.total.toLocaleString('en')} books</h2>
+            <div className="mb-6 flex flex-wrap items-baseline justify-between gap-4">
+              <h2 className="font-serif text-xl text-ink">{catalogue.total.toLocaleString('en')} books</h2>
+              <SaveShelfButton title={shelfTitle} path="/books" params={sp} />
+            </div>
             <TileGrid>
               {catalogue.results.map((w) => (
                 <WorkTile key={w.workId} work={w} />
               ))}
             </TileGrid>
-            <Pager path="/books" params={{ q, borrow: borrow ? '1' : undefined, lang }} page={page} total={catalogue.total} pageSize={catalogue.pageSize} />
+            <Pager path="/books" params={sp} page={page} total={catalogue.total} pageSize={catalogue.pageSize} />
           </>
         )
       ) : !archive ? (
@@ -200,15 +224,20 @@ async function SearchResults({
         <>
           <StaleNotice stale={archive.stale} />
           <div className="mb-6 flex flex-wrap items-baseline justify-between gap-4">
-            <h2 className="font-serif text-xl text-ink">{archive.total.toLocaleString('en')} scans, best match first</h2>
-            <SelectAllButton items={archive.results.map((c) => itemToTray(c, 'books'))} label="this page to the slip" />
+            <h2 className="font-serif text-xl text-ink">
+              {archive.total.toLocaleString('en')} scans, {state.sort ? SORTS[state.sort].label.toLowerCase() : 'best match'} first
+            </h2>
+            <div className="flex flex-wrap items-center gap-6">
+              <SaveShelfButton title={shelfTitle} path="/books" params={sp} />
+              <SelectAllButton items={archive.results.map((c) => itemToTray(c, 'books'))} label="this page to the slip" />
+            </div>
           </div>
           <TileGrid>
             {archive.results.map((c) => (
               <ItemTile key={c.identifier} card={c} section="books" />
             ))}
           </TileGrid>
-          <Pager path="/books" params={{ q, source: 'archive', lang }} page={page} total={archive.total} pageSize={archive.pageSize} />
+          <Pager path="/books" params={sp} page={page} total={archive.total} pageSize={archive.pageSize} />
         </>
       )}
     </>
