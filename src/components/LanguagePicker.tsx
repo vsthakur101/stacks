@@ -1,7 +1,7 @@
 import { ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/cn';
-import { findLanguage, LANGUAGES, type Language } from '@/lib/shared/languages';
+import { findLanguage, LANGUAGES, OTHER_LANGUAGE, OTHER_LANGUAGE_LABEL, type Language } from '@/lib/shared/languages';
 
 const pill = 'inline-flex items-baseline gap-1.5 rounded-full px-3.5 py-1.5 transition-colors';
 const on = 'bg-raised text-ink shadow-[0_1px_2px_rgb(0_0_0/0.12)] ring-1 ring-rule';
@@ -24,13 +24,14 @@ function Label({ lang }: { lang: Language }) {
  */
 export function LanguagePicker({ current, href }: { current?: string; href: (code?: string) => string }) {
   const selected = findLanguage(current);
+  const other = current === OTHER_LANGUAGE;
   const pills = LANGUAGES.filter((l) => l.primary || l.code === selected?.code);
   const rest = LANGUAGES.filter((l) => !l.primary);
 
   return (
     <div role="group" aria-label="Language" className="flex flex-wrap items-center gap-1 text-sm">
       <span className="mr-2 text-ink-faint">Language</span>
-      <Link href={href(undefined)} aria-current={!selected ? 'true' : undefined} className={cn(pill, !selected ? on : off)}>
+      <Link href={href(undefined)} aria-current={!selected && !other ? 'true' : undefined} className={cn(pill, !selected && !other ? on : off)}>
         Any
       </Link>
       {pills.map((l) => (
@@ -64,6 +65,14 @@ export function LanguagePicker({ current, href }: { current?: string; href: (cod
           ))}
         </ul>
       </details>
+      {/* Untagged texts and languages outside the list, so a language choice never hides anything for good. */}
+      <Link
+        href={href(OTHER_LANGUAGE)}
+        aria-current={other ? 'true' : undefined}
+        className={cn(pill, other ? on : off)}
+      >
+        {OTHER_LANGUAGE_LABEL}
+      </Link>
     </div>
   );
 }

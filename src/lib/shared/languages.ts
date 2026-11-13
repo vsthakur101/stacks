@@ -35,3 +35,22 @@ export const LANGUAGES: readonly Language[] = [
 export function findLanguage(code: string | undefined): Language | undefined {
   return code ? LANGUAGES.find((l) => l.code === code) : undefined;
 }
+
+/**
+ * URL value for "Other or unknown": everything not tagged with a listed language. That covers texts with
+ * no language recorded (about 35% of archive.org scans for "gita", measured 2026-11-13) and texts in
+ * languages outside the list. `und` is ISO 639-2 for "undetermined".
+ */
+export const OTHER_LANGUAGE = 'und';
+export const OTHER_LANGUAGE_LABEL = 'Other or unknown';
+
+/** A valid `?lang=` value: a listed language code or OTHER_LANGUAGE. Anything else is dropped. */
+export function parseLanguageFilter(value: string | undefined): string | undefined {
+  if (value === OTHER_LANGUAGE) return OTHER_LANGUAGE;
+  return findLanguage(value)?.code;
+}
+
+export function languageFilterName(code: string | undefined): string | undefined {
+  if (code === OTHER_LANGUAGE) return 'other or unknown languages';
+  return findLanguage(code)?.name;
+}

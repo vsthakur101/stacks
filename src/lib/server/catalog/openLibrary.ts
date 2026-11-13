@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { findLanguage } from '@/lib/shared/languages';
+import { findLanguage, LANGUAGES, OTHER_LANGUAGE } from '@/lib/shared/languages';
 import type { EbookAccess, Page, WorkCard } from '@/lib/shared/types';
 import { getJson, TTL } from '../http';
 import { olCover, plainText } from './normalize';
@@ -52,9 +52,8 @@ export async function searchWorks(opts: WorkSearchOptions): Promise<Page<WorkCar
   const page = Math.max(1, opts.page ?? 1);
   const pageSize = opts.pageSize ?? 24;
   const access = opts.includeBorrowable ? 'has_fulltext:true' : 'ebook_access:public';
-  const lang = findLanguage(opts.language);
   const params = new URLSearchParams({
-    q: `${opts.query} ${access}${lang ? ` language:${lang.code}` : ''}`.trim(),
+    q: `${opts.query} ${access}${olLanguageClause(opts.language)}`.trim(),
     fields: SEARCH_FIELDS,
     page: String(page),
     limit: String(pageSize),
@@ -62,6 +61,13 @@ export async function searchWorks(opts: WorkSearchOptions): Promise<Page<WorkCar
   if (opts.sort) params.set('sort', opts.sort);
   const { data, stale } = await getJson(`${BASE}/search.json?${params}`, TTL.search, (raw) => searchSchema.parse(raw));
   return { total: data.numFound, page, pageSize, stale, results: data.docs.map(toWorkCard) };
+}
+
+/** OL language filter: a listed code, or for OTHER_LANGUAGE, none of the listed codes (includes untagged works). */
+export function olLanguageClause(code: string | undefined): string {
+  if (code === OTHER_LANGUAGE) return ` -language:(${LANGUAGES.map((l) => l.code).join(' OR ')})`;
+  const lang = findLanguage(code);
+  return lang ? ` language:${lang.code}` : '';
 }
 
 /**

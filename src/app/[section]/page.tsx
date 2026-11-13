@@ -10,7 +10,7 @@ import { listPublications, searchSection } from '@/lib/server/catalog/archive';
 import { escapeLucene } from '@/lib/server/catalog/normalize';
 import { ARCHIVE_SECTIONS, SECTIONS } from '@/lib/server/catalog/sections';
 import { attempt, pageNum, str, type SearchParams } from '@/lib/server/pageParams';
-import { findLanguage } from '@/lib/shared/languages';
+import { parseLanguageFilter } from '@/lib/shared/languages';
 import type { SectionId } from '@/lib/shared/types';
 
 export const dynamic = 'force-dynamic';
@@ -32,7 +32,7 @@ export default async function SectionPage({ params, searchParams }: { params: Pa
   const sp = await searchParams;
   const q = str(sp.q);
   const page = pageNum(sp.page);
-  const lang = q ? findLanguage(str(sp.lang))?.code : undefined;
+  const lang = q ? parseLanguageFilter(str(sp.lang)) : undefined;
   const href = (code?: string) => `/${section}?${new URLSearchParams({ q: q ?? '', ...(code ? { lang: code } : {}) })}`;
 
   return (

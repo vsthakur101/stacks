@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { findLanguage } from '@/lib/shared/languages';
+import { findLanguage, LANGUAGES, OTHER_LANGUAGE } from '@/lib/shared/languages';
 import type { ItemCard, Page, SectionId } from '@/lib/shared/types';
 import { getJson, TTL, UpstreamError } from '../http';
 import { archiveThumb, cleanTitle, first, parseDate, realCollections } from './normalize';
@@ -75,10 +75,15 @@ export function searchSection(section: SectionId, text: string, page: number, la
   });
 }
 
-/** ` AND language:(hin OR Hindi)` for a known language code; empty for none or an unknown code. */
+/**
+ * ` AND language:("hin" OR "Hindi")` for a listed language; for OTHER_LANGUAGE, the negation of every
+ * listed spelling, which also matches texts with no language field. Empty for none or an unknown code.
+ */
 export function languageClause(code: string | undefined): string {
+  const quote = (terms: readonly string[]) => terms.map((t) => `"${t}"`).join(' OR ');
+  if (code === OTHER_LANGUAGE) return ` AND NOT language:(${quote(LANGUAGES.flatMap((l) => l.archiveTerms))})`;
   const lang = findLanguage(code);
-  return lang ? ` AND language:(${lang.archiveTerms.map((t) => `"${t}"`).join(' OR ')})` : '';
+  return lang ? ` AND language:(${quote(lang.archiveTerms)})` : '';
 }
 
 /** Lucene for "every freely downloadable text on archive.org matching user text". `text` must be escaped. */

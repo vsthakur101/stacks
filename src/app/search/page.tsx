@@ -9,7 +9,7 @@ import { escapeLucene } from '@/lib/server/catalog/normalize';
 import { olText, searchWorks } from '@/lib/server/catalog/openLibrary';
 import { ARCHIVE_SECTIONS, SECTIONS } from '@/lib/server/catalog/sections';
 import { attempt, str, type SearchParams } from '@/lib/server/pageParams';
-import { findLanguage } from '@/lib/shared/languages';
+import { languageFilterName, parseLanguageFilter } from '@/lib/shared/languages';
 import type { Page, WorkCard } from '@/lib/shared/types';
 
 export const dynamic = 'force-dynamic';
@@ -24,7 +24,7 @@ const PREVIEW = 6;
 export default async function SearchPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const q = str(sp.q);
-  const lang = findLanguage(str(sp.lang))?.code;
+  const lang = parseLanguageFilter(str(sp.lang));
   if (!q) {
     return (
       <>
@@ -112,7 +112,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
         <Empty title={`Nothing found for “${q}”.`}>
           <p>
             {lang
-              ? `Nothing in ${findLanguage(lang)?.name}. Try “Any” language, or a different spelling.`
+              ? `Nothing in ${languageFilterName(lang)}. Try “Any” language, or a different spelling.`
               : 'Try fewer words, a different spelling, or an author’s surname on its own.'}
           </p>
         </Empty>

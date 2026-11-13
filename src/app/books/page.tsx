@@ -12,7 +12,7 @@ import { escapeLucene } from '@/lib/server/catalog/normalize';
 import { olText, searchWorks } from '@/lib/server/catalog/openLibrary';
 import { SECTIONS } from '@/lib/server/catalog/sections';
 import { attempt, pageNum, str, type SearchParams } from '@/lib/server/pageParams';
-import { findLanguage } from '@/lib/shared/languages';
+import { parseLanguageFilter } from '@/lib/shared/languages';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Books' };
@@ -52,7 +52,7 @@ export default async function BooksPage({ searchParams }: { searchParams: Search
   const page = pageNum(sp.page);
   const source: Source = str(sp.source) === 'archive' ? 'archive' : 'catalogue';
   const borrow = source === 'catalogue' && str(sp.borrow) === '1';
-  const lang = findLanguage(str(sp.lang))?.code;
+  const lang = parseLanguageFilter(str(sp.lang));
   const hidden: Record<string, string> = {};
   if (source === 'archive') hidden.source = 'archive';
   if (borrow) hidden.borrow = '1';
