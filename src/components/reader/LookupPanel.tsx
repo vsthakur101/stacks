@@ -8,7 +8,7 @@ import { fieldClass, SidePanel } from './SidePanel';
 
 interface MwEntry {
   headword: string;
-  via: 'exact' | 'ending' | 'cologne' | 'compound';
+  via: 'exact' | 'ending' | 'grammar' | 'cologne' | 'compound';
   senses: string[];
   url: string;
 }
@@ -21,10 +21,18 @@ interface WiktionarySense {
   url: string;
 }
 
+interface GrammarSegment {
+  form: string;
+  lemma: string;
+  grammar: string;
+  gloss: string;
+}
+
 interface LookupResult {
   query: string;
   word: string;
   sanskrit: MwEntry[];
+  grammar: GrammarSegment[];
   wiktionary: WiktionarySense[];
 }
 
@@ -34,6 +42,7 @@ function viaLabel(e: MwEntry, word: string): string | null {
   if (e.via === 'exact') return null;
   if (e.via === 'compound') return `First part of ${word}`;
   if (e.via === 'cologne') return `Closest headword to ${word}`;
+  if (e.via === 'grammar') return `Dictionary form of a part of ${word}, from its grammar`;
   return `Dictionary form of ${word}`;
 }
 
@@ -70,7 +79,7 @@ export function LookupPanel({ request, onClose }: { request: { word: string; n: 
     // A new request object means a new lookup (run is recreated each render on purpose).
   }, [request]);
 
-  const nothing = result && !result.sanskrit.length && !result.wiktionary.length;
+  const nothing = result && !result.sanskrit.length && !result.wiktionary.length && !result.grammar.length;
   return (
     <SidePanel title="Look up" onClose={onClose}>
       <form
@@ -100,6 +109,39 @@ export function LookupPanel({ request, onClose }: { request: { word: string; n: 
         {!loading && result ? (
           <div className="space-y-6">
             {result.word !== result.query.trim() && !nothing ? <p className="text-sm text-ink-faint">Looked up as {result.word}</p> : null}
+            {result.grammar.length ? (
+              <section aria-labelledby="gr-h">
+                <h3 id="gr-h" className="text-sm text-ink-faint">
+                  Grammar, Sanskrit Heritage
+                </h3>
+                <ol className="mt-2 space-y-2">
+                  {result.grammar.map((g, i) => (
+                    <li key={i} className="text-ink">
+                      <span className="font-title text-lg">{g.form}</span>
+                      {g.lemma !== g.form ? (
+                        <>
+                          {' '}
+                          from{' '}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setQ(g.lemma);
+                              void run(g.lemma);
+                            }}
+                            className="font-title text-lg text-accent underline-offset-4 hover:underline"
+                            title={`Look up ${g.lemma}`}
+                          >
+                            {g.lemma}
+                          </button>
+                        </>
+                      ) : null}
+                      <span className="block text-sm text-ink-soft">{g.gloss || g.grammar}</span>
+                    </li>
+                  ))}
+                </ol>
+                <p className="mt-1 text-xs text-ink-faint">Analysed as Sanskrit; ignore it for a Hindi word.</p>
+              </section>
+            ) : null}
             {result.sanskrit.length ? (
               <section aria-labelledby="mw-h">
                 <h3 id="mw-h" className="text-sm text-ink-faint">

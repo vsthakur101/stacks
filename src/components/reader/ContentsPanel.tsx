@@ -161,6 +161,8 @@ export function ContentsPanel({
           ) : null}
         </form>
 
+        <VerseJump file={file} page={page} onGo={onGo} />
+
         <section className="border-b border-rule p-4" aria-labelledby="printed-h">
           <h3 id="printed-h" className="text-sm font-medium text-ink">
             Printed page numbers
@@ -419,5 +421,48 @@ function HeadingsBuilder({
         </div>
       ) : null}
     </section>
+  );
+}
+
+/** Go to verse: "47" (next one from here) or "2.47" (chapter 2, chapters being the bookmarks in order). */
+function VerseJump({ file, page, onGo }: { file: string; page: number; onGo: (page: number) => void }) {
+  const [ref, setRef] = useState('');
+  const [status, setStatus] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  async function go() {
+    if (!ref.trim()) return;
+    setBusy(true);
+    setStatus(null);
+    try {
+      const d = await api<{ page: number }>(`/api/verse?${new URLSearchParams({ file, ref: ref.trim(), from: String(page) })}`);
+      onGo(d.page);
+      setStatus(`Verse ${ref.trim()} is on page ${d.page}.`);
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : 'Couldn’t find that verse.');
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <form
+      className="border-b border-rule p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void go();
+      }}
+    >
+      <label htmlFor="verse" className="text-sm text-ink-soft">
+        Go to verse
+      </label>
+      <div className="mt-1 flex gap-2">
+        <input id="verse" inputMode="decimal" value={ref} onChange={(e) => setRef(e.target.value)} placeholder="47, or 2.47 for chapter 2" className={cn(fieldClass, 'tabular-nums')} autoComplete="off" />
+        <button type="submit" disabled={!ref.trim() || busy} className="shrink-0 rounded-full border border-rule px-4 text-sm text-ink hover:bg-raised disabled:opacity-40">
+          Go
+        </button>
+      </div>
+      <p role="status" className="mt-1 text-sm text-ink-soft">
+        {busy ? 'Looking…' : (status ?? 'Finds the verse’s closing number (॥ ४७ ॥). Chapters are your bookmarks, in order.')}
+      </p>
+    </form>
   );
 }

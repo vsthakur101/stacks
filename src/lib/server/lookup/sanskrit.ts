@@ -10,7 +10,7 @@ import { getCached, getJson, TTL } from '../http';
 
 const BASE = 'https://www.sanskrit-lexicon.uni-koeln.de/scans/csl-apidev';
 
-export type FoundVia = 'exact' | 'ending' | 'cologne' | 'compound';
+export type FoundVia = 'exact' | 'ending' | 'grammar' | 'cologne' | 'compound';
 
 export interface MwEntry {
   headword: string;
@@ -95,7 +95,7 @@ export function parseMw(html: string): { headword: string; senses: string[] } | 
 
 export const mwUrl = (key: string) => `${BASE}/getword.php?${new URLSearchParams({ dict: 'mw', key, input: 'deva', output: 'deva' })}`;
 
-async function mw(key: string): Promise<{ headword: string; senses: string[] } | null> {
+export async function mw(key: string): Promise<{ headword: string; senses: string[] } | null> {
   try {
     return (await getCached(mwUrl(key), TTL.dictionary, parseMw, { accept: 'text/html', timeoutMs: 8000 })).data;
   } catch {
