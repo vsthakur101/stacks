@@ -3,6 +3,7 @@ import { BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { CollectionMenu, CollectionTools, type CollectionOption } from '@/components/CollectionMenu';
 import { Cover } from '@/components/Cover';
+import { MatchFile, UnlinkFile } from '@/components/MatchFile';
 import { FileButtons } from '@/components/FileButtons';
 import { FilterBar, type FilterMenuSpec } from '@/components/FilterBar';
 import { languageMenu } from '@/components/filterMenus';
@@ -160,7 +161,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
       {lib.others.length > 0 ? (
         <section className="t-section mt-14">
           <h2 className="font-display text-2xl text-ink">Other files</h2>
-          <p className="mt-1 mb-5 text-sm text-ink-soft">In your download folder, but not downloaded by Stacks.</p>
+          <p className="mt-1 mb-5 text-sm text-ink-soft">In your download folder, but not downloaded by Stacks. Find on archive.org gives a file its cover, details and set.</p>
           <ul className="divide-y divide-rule border-y border-rule">
             {lib.others.map((f) => (
               <li key={f.relative} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 py-3">
@@ -174,6 +175,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
                 <span className="flex flex-wrap items-center gap-x-4">
                   <FileButtons target={{ file: f.relative }} />
                   <CollectionMenu itemRef={fileRef(f.relative)} all={options} member={membership.get(fileRef(f.relative)) ?? []} />
+                  <MatchFile file={f.relative} />
                 </span>
               </li>
             ))}
@@ -215,6 +217,11 @@ function LibraryTile({ entry, collections, member }: { entry: LibraryEntry; coll
         ) : null}
         <FileButtons target={{ identifier: entry.identifier }} multiple={entry.files.length > 1} />
         <CollectionMenu itemRef={itemRef(entry.identifier)} all={collections} member={member} />
+        {entry.files
+          .filter((f) => f.linked)
+          .map((f) => (
+            <UnlinkFile key={f.relative} file={f.relative} />
+          ))}
       </div>
     </li>
   );

@@ -8,7 +8,7 @@ interface Count {
   added: number;
   updated: number;
 }
-type Summary = Record<'annotations' | 'readingProgress' | 'bookPrefs' | 'savedShelves' | 'searchHistory' | 'settings' | 'collections' | 'collectionMembers' | 'readingDays', Count>;
+type Summary = Record<'annotations' | 'readingProgress' | 'bookPrefs' | 'savedShelves' | 'searchHistory' | 'settings' | 'collections' | 'collectionMembers' | 'readingDays' | 'fileLinks', Count>;
 
 const LABELS: Record<keyof Summary, string> = {
   annotations: 'highlights, notes and bookmarks',
@@ -20,6 +20,7 @@ const LABELS: Record<keyof Summary, string> = {
   collections: 'collections',
   collectionMembers: 'books in collections',
   readingDays: 'days of reading time',
+  fileLinks: 'files matched to archive.org',
 };
 
 function describe(s: Summary): string {

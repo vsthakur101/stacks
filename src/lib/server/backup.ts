@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import { getDb } from './db/client';
-import { annotations, bookPrefs, collectionMembers, collections, readingDays, readingProgress, savedShelves, searchHistory, settings } from './db/schema';
+import { annotations, bookPrefs, collectionMembers, collections, fileLinks, readingDays, readingProgress, savedShelves, searchHistory, settings } from './db/schema';
 import { getSettings } from './settings';
 
 /**
@@ -55,6 +55,7 @@ const historyRow = z.object({
 const settingRow = z.object({ key: z.string().min(1).max(100), value: z.string().max(10_000) });
 const collectionRow = z.object({ id: z.string().min(1).max(100), name: z.string().min(1).max(80), createdAt: z.number().int() });
 const memberRow = z.object({ collectionId: z.string().min(1).max(100), ref: z.string().min(1).max(1100), addedAt: z.number().int() });
+const linkRow = z.object({ file: z.string().min(1).max(1000), identifier: z.string().min(1).max(100), name: z.string().max(1000), size: z.number().int().min(0), linkedAt: z.number().int() });
 const dayRow = z.object({ file: z.string().min(1).max(1000), day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), seconds: z.number().int().min(0), pages: z.number().int().min(0) });
 
 export const backupSchema = z.object({
@@ -71,6 +72,7 @@ export const backupSchema = z.object({
     collections: z.array(collectionRow).default([]),
     collectionMembers: z.array(memberRow).default([]),
     readingDays: z.array(dayRow).default([]),
+    fileLinks: z.array(linkRow).default([]),
   }),
 });
 export type Backup = z.infer<typeof backupSchema>;
@@ -91,6 +93,7 @@ export function createBackup(): Backup {
       collections: db.select().from(collections).all(),
       collectionMembers: db.select().from(collectionMembers).all(),
       readingDays: db.select().from(readingDays).all(),
+      fileLinks: db.select().from(fileLinks).all(),
     },
   };
 }
@@ -116,6 +119,7 @@ export function restoreBackup(raw: unknown): RestoreSummary {
     collections: count(),
     collectionMembers: count(),
     readingDays: count(),
+    fileLinks: count(),
   };
 
   getDb().transaction((tx) => {
@@ -187,6 +191,11 @@ export function restoreBackup(raw: unknown): RestoreSummary {
         tx.update(readingDays).set({ seconds: row.seconds, pages: Math.max(row.pages, here.pages) }).where(and(eq(readingDays.file, row.file), eq(readingDays.day, row.day))).run();
         summary.readingDays.updated++;
       }
+    }
+    for (const row of t.fileLinks) {
+      if (tx.select({ file: fileLinks.file }).from(fileLinks).where(eq(fileLinks.file, row.file)).get()) continue;
+      tx.insert(fileLinks).values(row).run();
+      summary.fileLinks.added++;
     }
     // Settings describe this Mac (its download folder): only fill in what isn't set here.
     for (const row of t.settings) {

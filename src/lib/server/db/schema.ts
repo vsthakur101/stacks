@@ -178,3 +178,14 @@ export const collectionMembers = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.collectionId, t.ref] }), index('idx_collection_members_ref').on(t.ref)],
 );
+
+/** Files the owner put in the download folder, linked by hand to an archive.org item (no renaming). */
+export const fileLinks = sqliteTable('file_links', {
+  /** Path inside the download folder. */
+  file: text('file').primaryKey(),
+  identifier: text('identifier').notNull(),
+  /** Name and size, to find the link again if the file is moved. */
+  name: text('name').notNull(),
+  size: integer('size').notNull(),
+  linkedAt: integer('linked_at').notNull(),
+});

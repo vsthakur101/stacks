@@ -1,6 +1,16 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { isSectionId, type SectionId } from '@/lib/shared/types';
+import { getDb } from '../db/client';
+import { fileLinks } from '../db/schema';
+
+function loadLinks(): FileLink[] {
+  try {
+    return getDb().select().from(fileLinks).all();
+  } catch {
+    return [];
+  }
+}
 
 /**
  * The Library reads the download folder itself, not download history: clearing finished downloads
@@ -17,6 +27,8 @@ export interface LibraryFile {
   size: number;
   modifiedAt: number;
   ext: string;
+  /** Linked by hand to an archive.org item (its name has no [identifier]). */
+  linked?: boolean;
 }
 
 export interface LibraryItem {
@@ -100,7 +112,19 @@ async function walk(root: string, dir: string, out: LibraryFile[], depth: number
   }
 }
 
-export async function scanFolder(root: string): Promise<LibraryScan> {
+export interface FileLink {
+  file: string;
+  identifier: string;
+  name: string;
+  size: number;
+}
+
+/** The identifier a file was linked to by hand: by its path, or by name and size if it was moved. */
+function linkFor(file: LibraryFile, links: readonly FileLink[]): string | undefined {
+  return (links.find((l) => l.file === file.relative) ?? links.find((l) => l.name === file.name && l.size === file.size))?.identifier;
+}
+
+export async function scanFolder(root: string, links: readonly FileLink[] = []): Promise<LibraryScan> {
   const resolved = path.resolve(root);
   const files: LibraryFile[] = [];
   await walk(resolved, resolved, files, 0);
@@ -108,7 +132,11 @@ export async function scanFolder(root: string): Promise<LibraryScan> {
   const byId = new Map<string, LibraryItem>();
   const others: LibraryFile[] = [];
   for (const file of files) {
-    const identifier = identifierFor(file.relative);
+    let identifier = identifierFor(file.relative);
+    if (!identifier) {
+      identifier = linkFor(file, links);
+      if (identifier) file.linked = true;
+    }
     if (!identifier) {
       others.push(file);
       continue;
@@ -130,7 +158,7 @@ const FRESH_MS = 5_000;
 export function scanLibrary(root: string): Promise<LibraryScan> {
   const cached = globalForScan.__stacksScan;
   if (cached && cached.root === root && Date.now() - cached.at < FRESH_MS) return cached.scan;
-  const scan = scanFolder(root);
+  const scan = scanFolder(root, loadLinks());
   globalForScan.__stacksScan = { root, at: Date.now(), scan };
   return scan;
 }
