@@ -15,7 +15,7 @@ export async function ContinueReading() {
       </h2>
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((p) => {
-          const isText = p.total === 1000 && p.file.endsWith('.txt');
+          const isText = p.total === 1000 && (p.file.endsWith('.txt') || p.file.endsWith('.epub'));
           const fraction = isText ? (p.page - 1) / 999 : p.page / p.total;
           return (
             <li key={p.file}>

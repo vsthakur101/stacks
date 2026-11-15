@@ -9,6 +9,8 @@ export interface Progress {
   title: string;
   page: number;
   total: number;
+  /** EPUB: exact place (CFI). */
+  position?: string | null;
   updatedAt: number;
 }
 
@@ -21,7 +23,7 @@ export function saveProgress(p: Omit<Progress, 'updatedAt'>): void {
   getDb()
     .insert(readingProgress)
     .values(row)
-    .onConflictDoUpdate({ target: readingProgress.file, set: { page: row.page, total: row.total, title: row.title, identifier: row.identifier, updatedAt: row.updatedAt } })
+    .onConflictDoUpdate({ target: readingProgress.file, set: { page: row.page, total: row.total, title: row.title, identifier: row.identifier, position: row.position ?? null, updatedAt: row.updatedAt } })
     .run();
 }
 

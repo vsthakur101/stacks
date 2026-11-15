@@ -186,9 +186,9 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
   );
 }
 
-/** The file the reader opens for an item: its first PDF, else its first plain-text file. */
+/** The file the reader opens for an item: its first PDF, else EPUB, else plain-text file. */
 function readable(entry: LibraryEntry) {
-  return entry.files.find((f) => f.ext === 'pdf') ?? entry.files.find((f) => f.ext === 'txt');
+  return entry.files.find((f) => f.ext === 'pdf') ?? entry.files.find((f) => f.ext === 'epub') ?? entry.files.find((f) => f.ext === 'txt');
 }
 
 function LibraryTile({ entry, collections, member }: { entry: LibraryEntry; collections: CollectionOption[]; member: string[] }) {

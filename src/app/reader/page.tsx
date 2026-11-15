@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import fs from 'node:fs/promises';
 import { notFound } from 'next/navigation';
+import { EpubReader } from '@/components/reader/EpubReader';
 import { PdfReader } from '@/components/reader/PdfReader';
 import { TextReader } from '@/components/reader/TextReader';
 import { peekItem } from '@/lib/server/catalog/archive';
@@ -23,7 +24,7 @@ export default async function ReaderPage({ searchParams }: { searchParams: Searc
   const find = str(sp.find)?.slice(0, 200);
   const root = getSettings().downloadRoot;
   const file = relative ? await findLibraryFile(root, relative) : null;
-  if (!file || (file.ext !== 'pdf' && file.ext !== 'txt')) notFound();
+  if (!file || !['pdf', 'txt', 'epub'].includes(file.ext)) notFound();
 
   const item = await itemForFile(root, file.relative);
   const title = (item && peekItem(item.identifier)?.title) ?? titleFromFileName(file.name);
@@ -32,6 +33,9 @@ export default async function ReaderPage({ searchParams }: { searchParams: Searc
   const nextVol = item ? await nextVolumeFile(root, item.identifier) : null;
   const next = nextVol ? { href: `/reader?file=${encodeURIComponent(nextVol.relative)}`, label: nextVol.label } : undefined;
 
+  if (file.ext === 'epub') {
+    return <EpubReader file={file.relative} title={title} backHref={backHref} initialPosition={progress?.position ?? undefined} />;
+  }
   if (file.ext === 'pdf') {
     const start = Number.isInteger(askedPage) && askedPage >= 1 ? askedPage : (progress?.page ?? 1);
     return <PdfReader file={file.relative} title={title} backHref={backHref} initialPage={start} next={next} initialFind={find} />;

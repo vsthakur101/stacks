@@ -58,8 +58,8 @@ export default async function ItemPage({ params, searchParams }: { params: Param
   const localRead = onDisk
     .filter((f) => f.startsWith(path.resolve(root) + path.sep))
     .map((f) => path.relative(path.resolve(root), f))
-    .sort((a, b) => Number(b.endsWith('.pdf')) - Number(a.endsWith('.pdf')))
-    .find((f) => f.endsWith('.pdf') || f.endsWith('.txt'));
+    .sort((a, b) => Number(b.endsWith('.pdf')) - Number(a.endsWith('.pdf')) || Number(b.endsWith('.epub')) - Number(a.endsWith('.epub')))
+    .find((f) => f.endsWith('.pdf') || f.endsWith('.epub') || f.endsWith('.txt'));
   const readHref = localRead ? `/reader?file=${encodeURIComponent(localRead)}` : `/read/${identifier}`;
   const description = plainText(item.description);
   const details: [string, string | undefined][] = [

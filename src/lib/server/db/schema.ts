@@ -74,9 +74,11 @@ export const readingProgress = sqliteTable(
     file: text('file').primaryKey(),
     identifier: text('identifier'),
     title: text('title').notNull(),
-    /** 1-based page for PDFs; for text, scroll position in thousandths. */
+    /** 1-based page for PDFs; for text and EPUB, position in thousandths. */
     page: integer('page').notNull(),
     total: integer('total').notNull(),
+    /** Exact place where pages don't exist: an EPUB CFI. */
+    position: text('position'),
     updatedAt: integer('updated_at').notNull(),
   },
   (t) => [index('idx_reading_progress_updated_at').on(t.updatedAt)],

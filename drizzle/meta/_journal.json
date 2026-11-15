@@ -71,6 +71,13 @@
       "when": 1794754435373,
       "tag": "0009_file_links",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1794755069496,
+      "tag": "0010_progress_position",
+      "breakpoints": true
     }
   ]
 }
