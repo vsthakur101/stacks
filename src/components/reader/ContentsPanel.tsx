@@ -99,6 +99,7 @@ export function printedLabel(page: number, offset: number | null): string {
 }
 
 export function ContentsPanel({
+  file,
   doc,
   page,
   total,
@@ -107,6 +108,7 @@ export function ContentsPanel({
   onGo,
   onClose,
 }: {
+  file: string;
   doc: PDFDocumentProxy | null;
   page: number;
   total: number;
@@ -226,6 +228,8 @@ export function ContentsPanel({
           )}
         </section>
 
+        <HeadingsBuilder file={file} offset={offset} annotations={annotations} onGo={onGo} />
+
         {outline && outline.length > 0 ? (
           <section className="border-t border-rule p-4" aria-labelledby="outline-h">
             <h3 id="outline-h" className="text-sm font-medium text-ink">
@@ -286,5 +290,134 @@ function BookmarkRow({
         {printedLabel(b.page, offset)}
       </button>
     </li>
+  );
+}
+
+const HEADING_WORDS = ['सर्गः', 'अध्याय', 'अध्यायः', 'पर्व', 'काण्ड', 'स्कन्ध', 'Chapter'];
+
+interface Heading {
+  page: number;
+  label: string;
+}
+
+/** Contents from headings: propose chapter starts from a heading word, add the ticked ones as named bookmarks. */
+function HeadingsBuilder({
+  file,
+  offset,
+  annotations,
+  onGo,
+}: {
+  file: string;
+  offset: number | null;
+  annotations: ReturnType<typeof useAnnotations>;
+  onGo: (page: number) => void;
+}) {
+  const [word, setWord] = useState('');
+  const [found, setFound] = useState<Heading[] | null>(null);
+  const [picked, setPicked] = useState<Set<number>>(new Set());
+  const [status, setStatus] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function look(w: string) {
+    if (!w.trim()) return;
+    setWord(w);
+    setBusy(true);
+    setStatus(null);
+    try {
+      const d = await api<{ searchable: boolean; headings: Heading[] }>(`/api/headings?${new URLSearchParams({ file, word: w.trim() })}`);
+      setFound(d.headings);
+      setPicked(new Set(d.headings.map((h) => h.page)));
+      if (!d.headings.length) setStatus(d.searchable ? `No headings with “${w.trim()}” found near the tops of pages.` : 'This scan has almost no recognised text, so headings can’t be found.');
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : 'Couldn’t look for headings.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function add() {
+    const marks = (found ?? []).filter((h) => picked.has(h.page)).map((h) => ({ page: h.page, name: h.label }));
+    if (!marks.length) return;
+    setBusy(true);
+    try {
+      const changed = await api<unknown[]>('/api/annotations/bookmarks', { body: { file, marks } });
+      annotations.reload();
+      setStatus(`Added ${changed.length} ${changed.length === 1 ? 'bookmark' : 'bookmarks'}${changed.length < marks.length ? ' (pages already bookmarked with a name were kept)' : ''}.`);
+      setFound(null);
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : 'Couldn’t add the bookmarks.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="border-t border-rule p-4" aria-labelledby="headings-h">
+      <h3 id="headings-h" className="text-sm font-medium text-ink">
+        Contents from headings
+      </h3>
+      <p className="mt-1 text-sm text-ink-soft">Type the word this book’s chapter headings use; Stacks finds where each chapter starts.</p>
+      <form
+        className="mt-2 flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void look(word);
+        }}
+      >
+        <label htmlFor="heading-word" className="sr-only">
+          Heading word
+        </label>
+        <input id="heading-word" value={word} onChange={(e) => setWord(e.target.value)} placeholder="सर्गः, अध्याय, Chapter" className={fieldClass} autoComplete="off" />
+        <button type="submit" disabled={!word.trim() || busy} className="shrink-0 rounded-full border border-rule px-4 text-sm text-ink hover:bg-raised disabled:opacity-40">
+          Find
+        </button>
+      </form>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {HEADING_WORDS.map((w) => (
+          <button key={w} type="button" onClick={() => void look(w)} className="keep-round rounded-full border border-rule px-2.5 py-1 text-sm text-ink-soft hover:border-accent hover:text-ink">
+            {w}
+          </button>
+        ))}
+      </div>
+      {busy ? <p className="mt-2 text-sm text-ink-soft">Reading the book’s text…</p> : null}
+      {status ? (
+        <p role="status" className="mt-2 text-sm text-ink-soft">
+          {status}
+        </p>
+      ) : null}
+      {found && found.length ? (
+        <div className="mt-3">
+          <ol className="max-h-72 space-y-0.5 overflow-y-auto">
+            {found.map((h) => (
+              <li key={h.page} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id={`h-${h.page}`}
+                  checked={picked.has(h.page)}
+                  onChange={(e) =>
+                    setPicked((s) => {
+                      const next = new Set(s);
+                      if (e.target.checked) next.add(h.page);
+                      else next.delete(h.page);
+                      return next;
+                    })
+                  }
+                  className="size-4 shrink-0 accent-[var(--accent)]"
+                />
+                <label htmlFor={`h-${h.page}`} className="min-w-0 flex-1 truncate text-sm text-ink">
+                  {h.label}
+                </label>
+                <button type="button" onClick={() => onGo(h.page)} className="shrink-0 rounded-full px-2 py-1 text-sm tabular-nums text-accent hover:bg-raised">
+                  {printedLabel(h.page, offset)}
+                </button>
+              </li>
+            ))}
+          </ol>
+          <button type="button" onClick={() => void add()} disabled={!picked.size || busy} className="mt-3 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-ink disabled:opacity-40">
+            Add {picked.size} as bookmarks
+          </button>
+        </div>
+      ) : null}
+    </section>
   );
 }

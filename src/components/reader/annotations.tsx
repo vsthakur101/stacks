@@ -15,6 +15,7 @@ export function useAnnotations(file: string) {
   const [items, setItems] = useState<Annotation[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  const [version, setVersion] = useState(0);
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/annotations?file=${encodeURIComponent(file)}`)
@@ -24,7 +25,9 @@ export function useAnnotations(file: string) {
     return () => {
       cancelled = true;
     };
-  }, [file]);
+  }, [file, version]);
+  /** Re-reads from the server (after changes made in bulk). */
+  const reload = useCallback(() => setVersion((v) => v + 1), []);
 
   const fail = (e: unknown) => setError(e instanceof Error ? e.message : 'Something went wrong saving that.');
 
@@ -79,7 +82,7 @@ export function useAnnotations(file: string) {
     [file, items],
   );
 
-  return { items, error, create, update, remove, toggleBookmark, clearError: () => setError(null) };
+  return { items, error, create, update, remove, toggleBookmark, reload, clearError: () => setError(null) };
 }
 
 /** Text items of a page with their positions as fractions of the page (for capturing text under a box). */

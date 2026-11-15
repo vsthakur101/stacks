@@ -97,6 +97,30 @@ export function toggleBookmark(file: string, identifier: string | null, page: nu
   return createAnnotation({ file, identifier, page, kind: 'bookmark' });
 }
 
+/**
+ * Adds named bookmarks in one go (Contents from headings). A page that already has a bookmark keeps it;
+ * an unnamed one gets the name. Returns the bookmarks created or renamed.
+ */
+export function addNamedBookmarks(file: string, identifier: string | null, marks: { page: number; name: string }[]): Annotation[] {
+  const db = getDb();
+  const out: Annotation[] = [];
+  db.transaction(() => {
+    for (const { page, name } of marks) {
+      const existing = db
+        .select()
+        .from(annotations)
+        .where(and(eq(annotations.file, file), eq(annotations.page, page), eq(annotations.kind, 'bookmark')))
+        .get();
+      if (!existing) out.push(createAnnotation({ file, identifier, page, kind: 'bookmark', note: name }));
+      else if (!existing.note?.trim()) {
+        const renamed = updateAnnotation(existing.id, { note: name });
+        if (renamed) out.push(renamed);
+      }
+    }
+  });
+  return out;
+}
+
 /** Markdown for one or more books: grouped by book, then page. */
 export function toMarkdown(books: { title: string; annotations: Annotation[] }[]): string {
   const out: string[] = ['# Highlights and notes', ''];

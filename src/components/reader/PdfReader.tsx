@@ -360,7 +360,7 @@ export function PdfReader({
       ) : null}
       {panel === 'notes' ? <NotesPanel file={file} page={page} annotations={annotations} onGo={(n) => go(n)} onClose={() => setPanel(null)} /> : null}
       {panel === 'contents' ? (
-        <ContentsPanel doc={doc} page={page} total={total} annotations={annotations} prefs={prefs} onGo={(n) => go(n)} onClose={() => setPanel(null)} />
+        <ContentsPanel file={file} doc={doc} page={page} total={total} annotations={annotations} prefs={prefs} onGo={(n) => go(n)} onClose={() => setPanel(null)} />
       ) : null}
       {panel === 'find' ? <FindPanel find={find} page={page} onGo={(n) => go(n)} onClose={() => setPanel(null)} /> : null}
       {panel === 'lookup' ? <LookupPanel request={lookup} onClose={() => setPanel(null)} /> : null}
