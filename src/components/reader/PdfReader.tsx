@@ -56,7 +56,6 @@ export function PdfReader({
   const turnTimer = useRef<number | undefined>(undefined);
   const annotations = useAnnotations(file);
   const find = useFind(file, page);
-  const prefs = useBookPrefs(file);
   const [lookup, setLookup] = useState<{ word: string; n: number } | null>(null);
   useEffect(() => {
     if (!initialFind) return;
@@ -172,7 +171,8 @@ export function PdfReader({
   }, [page, total, save]);
 
   const go = useCallback((n: number) => setPage((p) => (total ? Math.min(Math.max(1, n), total) : p)), [total]);
-  const ra = useReadAloud({ doc, page, total, go });
+  const prefs = useBookPrefs(file);
+  const ra = useReadAloud({ doc, page, total, go, file, recognised: prefs.source === 'ocr' });
   const [reading, setReading] = useState(false);
   // Listening counts as reading even without touching anything.
   useReadingTimer(file, total ? page : undefined, ra.state === 'playing');

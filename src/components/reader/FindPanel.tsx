@@ -96,7 +96,7 @@ export function FindPanel({ find, page, onGo, onClose }: { find: FindState; page
     if (find.loading && !result) return 'Reading the book’s text…';
     if (!find.query.trim()) return 'Type a word or a line of a verse. Roman letters find Devanagari too.';
     if (!result) return null;
-    if (!result.searchable && !matches.length) return 'This scan has almost no recognised text, so there’s nothing to search.';
+    if (!result.searchable && !matches.length) return 'This scan has almost no recognised text. Contents (C) → Text recognition can read the pages on this Mac.';
     if (!matches.length) return 'No matches.';
     const close = matches.length - exact;
     return `${exact} exact${find.close ? `, ${close} close` : ''}${result.truncated ? ' (first 300)' : ''}`;

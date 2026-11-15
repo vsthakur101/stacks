@@ -13,18 +13,24 @@ interface BookInfo {
   pageOffset: number | null;
   suggestedOffset: number | null;
   searchable: boolean;
+  source: 'pdf' | 'ocr' | null;
 }
 
 /** Printed page numbers: offset = PDF page − printed page. */
 export function useBookPrefs(file: string) {
   const [offset, setOffsetState] = useState<number | null>(null);
   const [suggested, setSuggested] = useState<number | null>(null);
+  const [source, setSource] = useState<'pdf' | 'ocr' | null>(null);
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     api<BookInfo>(`/api/book?${new URLSearchParams({ file, suggest: '0' })}`)
-      .then((d) => !cancelled && setOffsetState(d.pageOffset))
+      .then((d) => {
+        if (cancelled) return;
+        setOffsetState(d.pageOffset);
+        setSource(d.source);
+      })
       .catch(() => undefined);
     return () => {
       cancelled = true;
@@ -48,7 +54,7 @@ export function useBookPrefs(file: string) {
     [file],
   );
 
-  return { offset, suggested, setOffset, checkSuggestion };
+  return { offset, suggested, setOffset, checkSuggestion, source, setSource };
 }
 
 export type BookPrefs = ReturnType<typeof useBookPrefs>;
@@ -231,6 +237,8 @@ export function ContentsPanel({
         </section>
 
         <HeadingsBuilder file={file} offset={offset} annotations={annotations} onGo={onGo} />
+
+        <TextRecognition file={file} prefs={prefs} />
 
         {outline && outline.length > 0 ? (
           <section className="border-t border-rule p-4" aria-labelledby="outline-h">
@@ -464,5 +472,85 @@ function VerseJump({ file, page, onGo }: { file: string; page: number; onGo: (pa
         {busy ? 'Looking…' : (status ?? 'Finds the verse’s closing number (॥ ४७ ॥). Chapters are your bookmarks, in order.')}
       </p>
     </form>
+  );
+}
+
+type OcrState =
+  | { status: 'idle' }
+  | { status: 'queued' | 'running'; done: number; total: number }
+  | { status: 'done'; pages: number }
+  | { status: 'failed'; message: string };
+
+/** Better text for poor scans: recognise the page images on this Mac (Apple Vision, offline). */
+function TextRecognition({ file, prefs }: { file: string; prefs: BookPrefs }) {
+  const [info, setInfo] = useState<{ available: boolean; state: OcrState; source: 'pdf' | 'ocr' | null } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const poll = async () => {
+      try {
+        const d = await api<{ available: boolean; state: OcrState; source: 'pdf' | 'ocr' | null }>(`/api/ocr?${new URLSearchParams({ file })}`);
+        if (cancelled) return;
+        setInfo(d);
+        if (d.source) prefs.setSource(d.source);
+        if (d.state.status === 'queued' || d.state.status === 'running') timer = setTimeout(() => void poll(), 2000);
+      } catch {
+        /* the section just stays as it is */
+      }
+    };
+    void poll();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // Restarted by `start` below through a new state object.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file, info?.state.status === 'queued']);
+
+  async function start() {
+    setError(null);
+    try {
+      const d = await api<{ state: OcrState }>('/api/ocr', { body: { file } });
+      setInfo((i) => (i ? { ...i, state: d.state } : i));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Couldn’t start.');
+    }
+  }
+  async function stop() {
+    await api('/api/ocr', { method: 'DELETE', body: { file } }).catch(() => undefined);
+  }
+
+  if (!info?.available) return null;
+  const s = info.state;
+  return (
+    <section className="border-t border-rule p-4" aria-labelledby="ocr-h">
+      <h3 id="ocr-h" className="text-sm font-medium text-ink">
+        Text recognition
+      </h3>
+      {s.status === 'running' || s.status === 'queued' ? (
+        <div className="mt-1 text-sm text-ink-soft" aria-live="polite">
+          <p>{s.status === 'queued' || !s.total ? 'Starting… (the first time takes a minute)' : `Reading page ${s.done} of ${s.total}…`}</p>
+          {s.total ? <progress value={s.done} max={s.total} className="mt-2 h-1.5 w-full accent-[var(--accent)]" /> : null}
+          <button type="button" onClick={() => void stop()} className="mt-2 text-ink-soft underline-offset-4 hover:text-ink hover:underline">
+            Stop
+          </button>
+        </div>
+      ) : (
+        <>
+          <p className="mt-1 text-sm text-ink-soft">
+            {info.source === 'ocr' || s.status === 'done'
+              ? `This book’s text was recognised on this Mac${s.status === 'done' ? ` (${s.pages} pages)` : ''}. Find, Library search and Read aloud use it.`
+              : 'Scans often carry poor or no text. Your Mac can read the page images itself (Hindi, Marathi, Sanskrit in Devanagari, and English), offline. A 300-page book takes a few minutes.'}
+          </p>
+          {s.status === 'failed' ? <p className="mt-1 text-sm text-danger">{s.message}</p> : null}
+          {error ? <p className="mt-1 text-sm text-danger">{error}</p> : null}
+          <button type="button" onClick={() => void start()} className="mt-2 rounded-full border border-rule px-4 py-1.5 text-sm text-ink hover:bg-raised">
+            {info.source === 'ocr' || s.status === 'done' ? 'Recognise again' : 'Recognise the text'}
+          </button>
+        </>
+      )}
+    </section>
   );
 }

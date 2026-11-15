@@ -45,7 +45,22 @@ function savedVoices(): Record<string, string> {
  * Reads the current page aloud, sentence by sentence, then turns the page and carries on. Offline: the
  * Mac's own voices (Lekha for Hindi). A generation counter ignores callbacks from cancelled speech.
  */
-export function useReadAloud({ doc, page, total, go }: { doc: PDFDocumentProxy | null; page: number; total: number; go: (n: number) => void }) {
+export function useReadAloud({
+  doc,
+  page,
+  total,
+  go,
+  file,
+  recognised,
+}: {
+  doc: PDFDocumentProxy | null;
+  page: number;
+  total: number;
+  go: (n: number) => void;
+  file: string;
+  /** The book's text was recognised on this Mac: read that instead of the PDF's own text layer. */
+  recognised: boolean;
+}) {
   // Decided after mount: the server can't know, and a different first render would break hydration.
   const [supported, setSupported] = useState(false);
   useEffect(() => setSupported('speechSynthesis' in window), []);
@@ -106,7 +121,12 @@ export function useReadAloud({ doc, page, total, go }: { doc: PDFDocumentProxy |
       if (!doc || !supported) return;
       const g = ++gen.current;
       window.speechSynthesis.cancel();
-      const items = await pageSpeechItems(doc, page).catch(() => []);
+      const items = recognised
+        ? await fetch(`/api/book/page?${new URLSearchParams({ file, page: String(page) })}`)
+            .then((r) => r.json())
+            .then((j: { data?: SpeechItem[] }) => j.data ?? [])
+            .catch(() => [])
+        : await pageSpeechItems(doc, page).catch(() => []);
       if (g !== gen.current) return;
       const list = speechChunks(items);
       setChunks(list);
@@ -121,7 +141,7 @@ export function useReadAloud({ doc, page, total, go }: { doc: PDFDocumentProxy |
       setNote(null);
       speak(list, from, l, g);
     },
-    [doc, go, page, speak, supported, total],
+    [doc, go, page, speak, supported, total, recognised, file],
   );
 
   // While reading, a new page (turned by hand or at the end of the last) is read from its top; so is the

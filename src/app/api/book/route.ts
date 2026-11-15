@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { apiError, guard, parseBody } from '@/lib/server/api';
 import { ensureBookText, getPageOffset, setPageOffset, suggestedOffsetFor } from '@/lib/server/library/bookText';
+import { textSource } from '@/lib/server/library/ocr';
 import { findLibraryFile } from '@/lib/server/library/scan';
 import { getSettings } from '@/lib/server/settings';
 
@@ -23,7 +24,7 @@ export async function GET(req: Request) {
   } catch {
     // An unreadable text layer only means no suggestion.
   }
-  return NextResponse.json({ data: { pageOffset: getPageOffset(file.relative), suggestedOffset, searchable } });
+  return NextResponse.json({ data: { pageOffset: getPageOffset(file.relative), suggestedOffset, searchable, source: textSource(file.relative) } });
 }
 
 const patchSchema = z.object({ file: z.string().min(1).max(1000), pageOffset: z.number().int().min(-2000).max(2000).nullable() });

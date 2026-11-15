@@ -1,0 +1,1 @@
+ALTER TABLE `book_texts` ADD `source` text DEFAULT 'pdf' NOT NULL;

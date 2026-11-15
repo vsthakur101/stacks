@@ -122,6 +122,8 @@ export const bookTexts = sqliteTable('book_texts', {
   /** Median characters per page: under ~200 means the scan has no real recognised text. */
   medianChars: integer('median_chars').notNull(),
   extractedAt: integer('extracted_at').notNull(),
+  /** 'pdf' (the file's own text layer) or 'ocr' (recognised on this Mac). */
+  source: text('source').notNull().default('pdf'),
 });
 
 export const bookTextPages = sqliteTable(

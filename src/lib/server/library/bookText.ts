@@ -88,7 +88,8 @@ export function ensureBookText(absolute: string, relative: string): Promise<Book
       for (const p of pages) {
         tx.insert(bookTextPages).values({ file: relative, page: p.page, text: p.text, itemsJson: JSON.stringify(p.items), norm: normalizeWithMap(p.text).norm }).run();
       }
-      const row = { size: stat.size, mtimeMs: Math.floor(stat.mtimeMs), pages: pages.length, chars, medianChars: median, extractedAt: Date.now() };
+      // A changed file loses recognised (OCR) text: its own text layer is read again.
+      const row = { size: stat.size, mtimeMs: Math.floor(stat.mtimeMs), pages: pages.length, chars, medianChars: median, extractedAt: Date.now(), source: 'pdf' };
       tx.insert(bookTexts).values({ file: relative, ...row }).onConflictDoUpdate({ target: bookTexts.file, set: row }).run();
     });
     return { pages: pages.length, chars, searchable: median >= MIN_MEDIAN_CHARS };
