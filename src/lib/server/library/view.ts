@@ -38,6 +38,8 @@ export interface LibraryFilters {
   q?: string;
   section?: SectionId;
   lang?: string;
+  /** Refs in the chosen collection ("item:…", "file:…"). */
+  members?: ReadonlySet<string>;
   sort: LibrarySort;
 }
 
@@ -64,6 +66,7 @@ export async function buildLibrary(root: string, filters: LibraryFilters): Promi
   const entries = all
     .filter((e) => !filters.section || e.section === filters.section)
     .filter((e) => !filters.lang || e.language === filters.lang)
+    .filter((e) => !filters.members || filters.members.has(`item:${e.identifier}`))
     .filter((e) => matches(e.title) || e.files.some((f) => matches(f.name)) || matches(e.identifier));
   entries.sort((a, b) =>
     filters.sort === 'title'
@@ -75,7 +78,7 @@ export async function buildLibrary(root: string, filters: LibraryFilters): Promi
 
   return {
     entries,
-    others: scan.others.filter((f) => matches(f.name)),
+    others: scan.others.filter((f) => matches(f.name) && (!filters.members || filters.members.has(`file:${f.relative}`))),
     totalItems: all.length,
     totalBytes: all.reduce((n, e) => n + e.bytes, 0) + scan.others.reduce((n, f) => n + f.size, 0),
     sections: [...new Set(all.map((e) => e.section))],

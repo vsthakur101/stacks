@@ -156,3 +156,23 @@ export const readingDays = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.file, t.day] }), index('idx_reading_days_day').on(t.day)],
 );
+
+/** The owner's own groups in the Library ("Puranas", "To read"). */
+export const collections = sqliteTable('collections', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  createdAt: integer('created_at').notNull(),
+});
+
+export const collectionMembers = sqliteTable(
+  'collection_members',
+  {
+    collectionId: text('collection_id')
+      .notNull()
+      .references(() => collections.id, { onDelete: 'cascade' }),
+    /** "item:<archive identifier>" for Stacks items, "file:<path in download folder>" for other files. */
+    ref: text('ref').notNull(),
+    addedAt: integer('added_at').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.collectionId, t.ref] }), index('idx_collection_members_ref').on(t.ref)],
+);

@@ -1,14 +1,15 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import { getDb } from './db/client';
-import { annotations, bookPrefs, readingProgress, savedShelves, searchHistory, settings } from './db/schema';
+import { annotations, bookPrefs, collectionMembers, collections, readingDays, readingProgress, savedShelves, searchHistory, settings } from './db/schema';
 import { getSettings } from './settings';
 
 /**
  * Backup and restore of everything the owner made: highlights, notes, bookmarks (and their names),
- * reading positions, printed-page offsets, Home shelves, search history, settings. Caches (archive.org
+ * reading positions and reading time, printed-page offsets, collections, Home shelves, search history,
+ * settings. Caches (archive.org
  * responses, extracted book text, covers) are rebuilt on demand and left out.
  *
  * Restoring merges: rows missing here are added, rows changed later in the backup replace older
@@ -52,6 +53,9 @@ const historyRow = z.object({
   uses: z.number().int(),
 });
 const settingRow = z.object({ key: z.string().min(1).max(100), value: z.string().max(10_000) });
+const collectionRow = z.object({ id: z.string().min(1).max(100), name: z.string().min(1).max(80), createdAt: z.number().int() });
+const memberRow = z.object({ collectionId: z.string().min(1).max(100), ref: z.string().min(1).max(1100), addedAt: z.number().int() });
+const dayRow = z.object({ file: z.string().min(1).max(1000), day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), seconds: z.number().int().min(0), pages: z.number().int().min(0) });
 
 export const backupSchema = z.object({
   app: z.literal('stacks'),
@@ -64,6 +68,9 @@ export const backupSchema = z.object({
     savedShelves: z.array(shelfRow).default([]),
     searchHistory: z.array(historyRow).default([]),
     settings: z.array(settingRow).default([]),
+    collections: z.array(collectionRow).default([]),
+    collectionMembers: z.array(memberRow).default([]),
+    readingDays: z.array(dayRow).default([]),
   }),
 });
 export type Backup = z.infer<typeof backupSchema>;
@@ -81,6 +88,9 @@ export function createBackup(): Backup {
       savedShelves: db.select().from(savedShelves).all(),
       searchHistory: db.select().from(searchHistory).all(),
       settings: db.select().from(settings).all(),
+      collections: db.select().from(collections).all(),
+      collectionMembers: db.select().from(collectionMembers).all(),
+      readingDays: db.select().from(readingDays).all(),
     },
   };
 }
@@ -96,7 +106,17 @@ export function restoreBackup(raw: unknown): RestoreSummary {
   const backup = backupSchema.parse(raw);
   const t = backup.tables;
   const count = (): RestoreCount => ({ added: 0, updated: 0 });
-  const summary: RestoreSummary = { annotations: count(), readingProgress: count(), bookPrefs: count(), savedShelves: count(), searchHistory: count(), settings: count() };
+  const summary: RestoreSummary = {
+    annotations: count(),
+    readingProgress: count(),
+    bookPrefs: count(),
+    savedShelves: count(),
+    searchHistory: count(),
+    settings: count(),
+    collections: count(),
+    collectionMembers: count(),
+    readingDays: count(),
+  };
 
   getDb().transaction((tx) => {
     for (const row of t.annotations) {
@@ -145,6 +165,27 @@ export function restoreBackup(raw: unknown): RestoreSummary {
           .where(eq(searchHistory.key, row.key))
           .run();
         summary.searchHistory.updated++;
+      }
+    }
+    for (const row of t.collections) {
+      if (tx.select({ id: collections.id }).from(collections).where(eq(collections.id, row.id)).get()) continue;
+      tx.insert(collections).values(row).run();
+      summary.collections.added++;
+    }
+    for (const row of t.collectionMembers) {
+      if (!tx.select({ id: collections.id }).from(collections).where(eq(collections.id, row.collectionId)).get()) continue;
+      const res = tx.insert(collectionMembers).values(row).onConflictDoNothing().run();
+      if (res.changes) summary.collectionMembers.added++;
+    }
+    // Reading time: the larger count for a day wins (the same day may be recorded in both places).
+    for (const row of t.readingDays) {
+      const here = tx.select().from(readingDays).where(and(eq(readingDays.file, row.file), eq(readingDays.day, row.day))).get();
+      if (!here) {
+        tx.insert(readingDays).values(row).run();
+        summary.readingDays.added++;
+      } else if (row.seconds > here.seconds) {
+        tx.update(readingDays).set({ seconds: row.seconds, pages: Math.max(row.pages, here.pages) }).where(and(eq(readingDays.file, row.file), eq(readingDays.day, row.day))).run();
+        summary.readingDays.updated++;
       }
     }
     // Settings describe this Mac (its download folder): only fill in what isn't set here.

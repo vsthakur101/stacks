@@ -8,7 +8,7 @@ interface Count {
   added: number;
   updated: number;
 }
-type Summary = Record<'annotations' | 'readingProgress' | 'bookPrefs' | 'savedShelves' | 'searchHistory' | 'settings', Count>;
+type Summary = Record<'annotations' | 'readingProgress' | 'bookPrefs' | 'savedShelves' | 'searchHistory' | 'settings' | 'collections' | 'collectionMembers' | 'readingDays', Count>;
 
 const LABELS: Record<keyof Summary, string> = {
   annotations: 'highlights, notes and bookmarks',
@@ -17,6 +17,9 @@ const LABELS: Record<keyof Summary, string> = {
   savedShelves: 'Home shelves',
   searchHistory: 'searches',
   settings: 'settings',
+  collections: 'collections',
+  collectionMembers: 'books in collections',
+  readingDays: 'days of reading time',
 };
 
 function describe(s: Summary): string {
@@ -58,7 +61,7 @@ export function BackupPanel({ daily }: { daily: { dir: string; count: number; la
       <div>
         <p className="font-title text-xl text-ink">Your highlights, notes and reading</p>
         <p className="mt-1 text-sm text-ink-soft">
-          One file with your highlights, notes, bookmarks, reading positions, printed page numbers, Home shelves, searches and settings. Books aren’t included; they stay in your download folder.
+          One file with your highlights, notes, bookmarks, reading positions and time, printed page numbers, collections, Home shelves, searches and settings. Books aren’t included; they stay in your download folder.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <a href="/api/backup" className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink hover:opacity-90">

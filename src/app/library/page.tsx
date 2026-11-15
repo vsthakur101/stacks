@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { BookOpen } from 'lucide-react';
 import Link from 'next/link';
+import { CollectionMenu, CollectionTools, type CollectionOption } from '@/components/CollectionMenu';
 import { Cover } from '@/components/Cover';
 import { FileButtons } from '@/components/FileButtons';
 import { FilterBar, type FilterMenuSpec } from '@/components/FilterBar';
@@ -10,6 +11,7 @@ import { Empty, PageHeading } from '@/components/States';
 import { itemHref, TileGrid } from '@/components/Tiles';
 import { formatBytesServer } from '@/lib/format';
 import { SECTIONS } from '@/lib/server/catalog/sections';
+import { fileRef, itemRef, listCollections, membersOf, membershipFor } from '@/lib/server/library/collections';
 import { buildLibrary, LIBRARY_SORTS, type LibraryEntry, type LibrarySort } from '@/lib/server/library/view';
 import { str, type SearchParams } from '@/lib/server/pageParams';
 import { hrefWith } from '@/lib/server/search/params';
@@ -33,10 +35,14 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
   const sortParam = str(sp.sort);
   const sort: LibrarySort = sortParam && sortParam in LIBRARY_SORTS ? (sortParam as LibrarySort) : 'recent';
   const root = getSettings().downloadRoot;
-  const lib = await buildLibrary(root, { q, section, lang, sort });
+  const allCollections = listCollections();
+  const collection = allCollections.find((c) => c.id === str(sp.c));
+  const lib = await buildLibrary(root, { q, section, lang, sort, members: collection ? membersOf(collection.id) : undefined });
+  const options: CollectionOption[] = allCollections.map((c) => ({ id: c.id, name: c.name }));
+  const membership = membershipFor([...lib.entries.map((e) => itemRef(e.identifier)), ...lib.others.map((f) => fileRef(f.relative))]);
   const view = (changes: Record<string, string | undefined>) => hrefWith('/library', sp, changes);
 
-  if (lib.totalItems === 0 && lib.others.length === 0 && !q) {
+  if (lib.totalItems === 0 && lib.others.length === 0 && !q && !collection) {
     return (
       <>
         <PageHeading title="My library" />
@@ -66,6 +72,19 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
       ],
     },
     languageMenu(lang, (code) => view({ lang: code })),
+    ...(allCollections.length
+      ? [
+          {
+            label: 'Collection',
+            value: collection?.name ?? 'All',
+            active: Boolean(collection),
+            options: [
+              { key: 'all', label: 'Everything', href: view({ c: undefined }), current: !collection },
+              ...allCollections.map((c) => ({ key: c.id, label: c.name, hint: `${c.count} ${c.count === 1 ? 'item' : 'items'}`, href: view({ c: c.id }), current: collection?.id === c.id })),
+            ],
+          },
+        ]
+      : []),
     {
       label: 'Sort',
       value: LIBRARY_SORTS[sort],
@@ -79,8 +98,9 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
     },
   ];
 
-  const filtered = Boolean(q || section || lang);
+  const filtered = Boolean(q || section || lang || collection);
   const hidden: Record<string, string> = {};
+  if (collection) hidden.c = collection.id;
   if (section) hidden.section = section;
   if (lang) hidden.lang = lang;
   if (sort !== 'recent') hidden.sort = sort;
@@ -111,8 +131,9 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
         </div>
       </div>
 
+      {collection ? <CollectionTools key={collection.id} id={collection.id} name={collection.name} count={collection.count} /> : null}
       {lib.entries.length === 0 ? (
-        <Empty title={filtered ? 'Nothing in your library matches.' : 'No downloaded items yet.'}>
+        <Empty title={collection && !q && !section && !lang ? `Nothing in “${collection.name}” yet.` : filtered ? 'Nothing in your library matches.' : 'No downloaded items yet.'}>
           {filtered ? (
             <p>
               <Link href="/library" className="text-accent underline underline-offset-4">
@@ -130,7 +151,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
           ) : null}
           <TileGrid>
             {lib.entries.map((e) => (
-              <LibraryTile key={e.identifier} entry={e} />
+              <LibraryTile key={e.identifier} entry={e} collections={options} member={membership.get(itemRef(e.identifier)) ?? []} />
             ))}
           </TileGrid>
         </>
@@ -150,7 +171,10 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
                     {formatBytesServer(f.size)}
                   </span>
                 </span>
-                <FileButtons target={{ file: f.relative }} />
+                <span className="flex flex-wrap items-center gap-x-4">
+                  <FileButtons target={{ file: f.relative }} />
+                  <CollectionMenu itemRef={fileRef(f.relative)} all={options} member={membership.get(fileRef(f.relative)) ?? []} />
+                </span>
               </li>
             ))}
           </ul>
@@ -165,7 +189,7 @@ function readable(entry: LibraryEntry) {
   return entry.files.find((f) => f.ext === 'pdf') ?? entry.files.find((f) => f.ext === 'txt');
 }
 
-function LibraryTile({ entry }: { entry: LibraryEntry }) {
+function LibraryTile({ entry, collections, member }: { entry: LibraryEntry; collections: CollectionOption[]; member: string[] }) {
   const toRead = readable(entry);
   const formats = [...new Set(entry.files.map((f) => f.ext.toUpperCase()).filter(Boolean))].join(', ');
   // With several files, Open shows their folder (the API does the same).
@@ -190,6 +214,7 @@ function LibraryTile({ entry }: { entry: LibraryEntry }) {
           </Link>
         ) : null}
         <FileButtons target={{ identifier: entry.identifier }} multiple={entry.files.length > 1} />
+        <CollectionMenu itemRef={itemRef(entry.identifier)} all={collections} member={member} />
       </div>
     </li>
   );
