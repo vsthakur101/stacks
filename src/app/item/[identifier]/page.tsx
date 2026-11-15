@@ -1,7 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
 import { Cover } from '@/components/Cover';
+import { SectionSkeleton } from '@/components/Skeletons';
+import { ItemTile, TileGrid } from '@/components/Tiles';
+import { relatedItems } from '@/lib/server/catalog/related';
+import { attempt } from '@/lib/server/pageParams';
 import path from 'node:path';
 import { FileActions } from '@/components/FileActions';
 import { SelectToggle } from '@/components/SelectToggle';
@@ -15,6 +20,7 @@ import { availability } from '@/lib/server/downloads/formats';
 import { getSettings } from '@/lib/server/settings';
 import { filesFor } from '@/lib/server/downloads/library';
 import { str, type SearchParams } from '@/lib/server/pageParams';
+import type { SectionId } from '@/lib/shared/types';
 import { FORMAT_LABELS, isSectionId } from '@/lib/shared/types';
 
 export const dynamic = 'force-dynamic';
@@ -163,6 +169,27 @@ export default async function ItemPage({ params, searchParams }: { params: Param
           </p>
         </div>
       </div>
+      <Suspense fallback={<SectionSkeleton title="More like this" />}>
+        <Related identifier={identifier} section={section} />
+      </Suspense>
     </article>
+  );
+}
+
+/** archive.org's related items, streamed in after the page. Nothing shown when there are none. */
+async function Related({ identifier, section }: { identifier: string; section: SectionId }) {
+  const cards = await attempt(() => relatedItems(identifier));
+  if (!cards?.length) return null;
+  return (
+    <section className="t-section mt-16" aria-labelledby="related-h">
+      <h2 id="related-h" className="font-display mb-8 text-2xl text-ink">
+        More like this
+      </h2>
+      <TileGrid shelf>
+        {cards.map((c) => (
+          <ItemTile key={c.identifier} card={c} section={section} />
+        ))}
+      </TileGrid>
+    </section>
   );
 }
