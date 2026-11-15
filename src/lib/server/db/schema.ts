@@ -62,6 +62,8 @@ export const savedShelves = sqliteTable('saved_shelves', {
   path: text('path').notNull(),
   paramsJson: text('params_json').notNull(),
   createdAt: integer('created_at').notNull(),
+  /** When the owner last looked at what's new on this shelf (watch a search); null = since it was saved. */
+  seenAt: integer('seen_at'),
 });
 
 /** Where the owner stopped in each downloaded file (Reader, Continue reading on Home). */

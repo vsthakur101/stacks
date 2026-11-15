@@ -66,11 +66,14 @@ export function ItemTile({
   section,
   publication,
   href,
+  isNew,
 }: {
   card: ItemCard;
   section: SectionId;
   publication?: string;
   href?: string;
+  /** Uploaded since the owner last looked (watched searches on Home). */
+  isNew?: boolean;
 }) {
   const target = href ?? (card.isCollection ? `/${section}/${card.identifier}` : itemHref(card.identifier, section, publication));
   const meta = card.isCollection
@@ -84,6 +87,7 @@ export function ItemTile({
         <div className="relative">
           <Cover src={card.thumbnail} title={card.title} subtitle={meta} shape="page" />
           {card.isCollection ? null : <DownloadedMark identifiers={[card.identifier]} className="absolute right-2 bottom-2" />}
+          {isNew ? <span className="keep-round absolute top-2 right-2 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-ink">New</span> : null}
         </div>
         <h3 className="mt-3.5 line-clamp-2 font-title text-[1.05rem] text-ink group-hover:text-accent">{card.title}</h3>
       </Link>

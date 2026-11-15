@@ -88,3 +88,10 @@ describe('downloadedFiles', () => {
     fs.rmSync(elsewhere, { recursive: true, force: true });
   });
 });
+
+describe('watched searches', () => {
+  it('asks archive.org for uploads after a time without fractional seconds', async () => {
+    const { addedSince } = await import('./library');
+    expect(addedSince(Date.UTC(2026, 10, 1, 14, 5, 9, 123))).toBe('addeddate:[2026-11-01T14:05:09Z TO null]');
+  });
+});

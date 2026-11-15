@@ -1,0 +1,1 @@
+ALTER TABLE `saved_shelves` ADD `seen_at` integer;

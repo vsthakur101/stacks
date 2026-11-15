@@ -2,12 +2,12 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { ContinueReading } from '@/components/ContinueReading';
 import { SearchBox } from '@/components/SearchBox';
-import { ClearHistoryButton, RemoveShelfButton } from '@/components/ShelfButtons';
+import { ClearHistoryButton, MarkSeenButton, RemoveShelfButton } from '@/components/ShelfButtons';
 import { SectionSkeleton } from '@/components/Skeletons';
 import { ItemTile, TileGrid, WorkTile } from '@/components/Tiles';
 import { loadShelf, SHELVES, type Shelf } from '@/lib/server/catalog/shelves';
 import { attempt } from '@/lib/server/pageParams';
-import { listShelves, recentSearches, runShelf, type SavedShelf, type ShelfResults } from '@/lib/server/search/library';
+import { listShelves, newOnShelf, recentSearches, runShelf, type SavedShelf, type ShelfResults } from '@/lib/server/search/library';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,13 +64,31 @@ export default function Home() {
 }
 
 async function SavedShelfRow({ shelf }: { shelf: SavedShelf }) {
-  const results = await attempt(() => runShelf(shelf));
+  const [results, fresh] = await Promise.all([attempt(() => runShelf(shelf)), attempt(() => newOnShelf(shelf))]);
+  // Watch a search: uploads since you last looked come first, marked New.
+  const newIds = new Set(fresh?.results.map((c) => c.identifier) ?? []);
+  const merged: ShelfResults | null =
+    fresh && fresh.count > 0 && (!results || results.kind === 'items')
+      ? { kind: 'items', section: fresh.section, results: [...fresh.results, ...(results?.results ?? []).filter((c) => !newIds.has(c.identifier))].slice(0, 12) }
+      : results;
+  const since = fresh ? new Date(fresh.since).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
   return (
     <ShelfRow
       title={shelf.title}
       more={shelf.href}
       remove={<RemoveShelfButton id={shelf.id} title={shelf.title} />}
-      results={results}
+      note={
+        fresh && fresh.count > 0 ? (
+          <span className="flex items-center gap-3 text-sm">
+            <span className="keep-round rounded-full bg-accent px-2.5 py-0.5 font-medium text-accent-ink">
+              {fresh.count.toLocaleString('en')} new since {since}
+            </span>
+            <MarkSeenButton id={shelf.id} />
+          </span>
+        ) : null
+      }
+      newIds={newIds}
+      results={merged}
       emptyText={results ? 'Nothing matches this search right now.' : 'Couldn’t load this shelf. It will try again next time.'}
     />
   );
@@ -90,12 +108,17 @@ function ShelfRow({
   title,
   more,
   remove,
+  note,
+  newIds,
   results,
   emptyText,
 }: {
   title: string;
   more?: string;
   remove?: React.ReactNode;
+  /** Shown under the title (e.g. "3 new since 12 Nov"). */
+  note?: React.ReactNode;
+  newIds?: ReadonlySet<string>;
   results: ShelfResults | null;
   emptyText?: string;
 }) {
@@ -107,6 +130,7 @@ function ShelfRow({
           {title}
           {remove}
         </h2>
+        {note}
         {more ? (
           <Link href={more} className="shrink-0 text-sm text-ink-soft underline-offset-4 hover:text-accent hover:underline">
             See more
@@ -119,7 +143,7 @@ function ShelfRow({
         <TileGrid shelf>
           {results.kind === 'works'
             ? results.results.map((w) => <WorkTile key={w.workId} work={w} />)
-            : results.results.map((c) => <ItemTile key={c.identifier} card={c} section={results.section} />)}
+            : results.results.map((c) => <ItemTile key={c.identifier} card={c} section={results.section} isNew={newIds?.has(c.identifier)} />)}
         </TileGrid>
       )}
     </section>

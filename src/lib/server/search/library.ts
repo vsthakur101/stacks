@@ -2,7 +2,7 @@ import { desc, eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { languageFilterName } from '@/lib/shared/languages';
 import { isSectionId, type ItemCard, type SectionId, type WorkCard } from '@/lib/shared/types';
-import { searchSection, searchTexts } from '../catalog/archive';
+import { searchArchive, searchSection, searchTexts, sectionQuery, textsQuery } from '../catalog/archive';
 import { searchWorks } from '../catalog/openLibrary';
 import { ARCHIVE_SECTIONS } from '../catalog/sections';
 import { getDb } from '../db/client';
@@ -85,6 +85,8 @@ export interface SavedShelf {
   href: string;
   path: string;
   params: Record<string, string[]>;
+  /** Uploads after this (ms) count as new on the shelf. */
+  seenAt: number;
 }
 
 export function saveShelf(title: string, path: string, sp: RawParams): string {
@@ -104,8 +106,47 @@ export function listShelves(): SavedShelf[] {
     .all()
     .map((row) => {
       const params = JSON.parse(row.paramsJson) as Record<string, string[]>;
-      return { id: row.id, title: row.title, path: row.path, params, href: `${row.path}?${toQueryString(params)}` };
+      return { id: row.id, title: row.title, path: row.path, params, href: `${row.path}?${toQueryString(params)}`, seenAt: row.seenAt ?? row.createdAt };
     });
+}
+
+export function markShelfSeen(id: string, at = Date.now()): boolean {
+  return getDb().update(savedShelves).set({ seenAt: at }).where(eq(savedShelves.id, id)).run().changes > 0;
+}
+
+/** archive.org clause for "added after": no fractional seconds (they make the query malformed). */
+export function addedSince(ms: number): string {
+  return `addeddate:[${new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z')} TO null]`;
+}
+
+export interface NewOnShelf {
+  count: number;
+  results: ItemCard[];
+  section: SectionId;
+  since: number;
+}
+
+/**
+ * Watch a search: items added to archive.org since the shelf was last looked at, newest first.
+ * Catalogued-book shelves (Open Library) have no upload dates and aren't watched (null).
+ */
+export async function newOnShelf(shelf: SavedShelf, size = 10): Promise<NewOnShelf | null> {
+  const state = parseSearch(shelf.params);
+  if (!state.q) return null;
+  if (shelf.path === '/books' && shelf.params.source?.[0] !== 'archive') return null;
+  const expanded = await expandQuery(state.q, { lang: state.lang, exact: state.exact, excluded: state.excluded });
+  const since = ` AND ${addedSince(shelf.seenAt)}`;
+  let section: SectionId = 'books';
+  let query: string;
+  if (shelf.path === '/books' || shelf.path === '/search') query = textsQuery(expanded.lucene, state.lang);
+  else {
+    const s = shelf.path.slice(1);
+    if (!isSectionId(s)) return null;
+    section = s;
+    query = sectionQuery(s, expanded.lucene, state.lang);
+  }
+  const page = await searchArchive({ query: query + since, pageSize: size, sort: ['addeddate desc'], ttl: 15 * 60 });
+  return { count: page.total, results: page.results, section, since: shelf.seenAt };
 }
 
 export function deleteShelf(id: string): boolean {

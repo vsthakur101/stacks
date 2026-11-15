@@ -57,6 +57,13 @@
       "when": 1794754040274,
       "tag": "0007_collections",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1794754235967,
+      "tag": "0008_shelf_seen",
+      "breakpoints": true
     }
   ]
 }

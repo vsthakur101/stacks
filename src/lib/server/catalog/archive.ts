@@ -76,12 +76,12 @@ export function searchSection(
   sort?: string[],
   pageSize = 24,
 ): Promise<Page<ItemCard>> {
-  return searchArchive({
-    query: `(${text}) AND mediatype:texts AND ${sectionScope(section)}${languageClause(lang)}`,
-    page,
-    pageSize,
-    sort,
-  });
+  return searchArchive({ query: sectionQuery(section, text, lang), page, pageSize, sort });
+}
+
+/** Lucene for a section's items matching user text. `text` must already be Lucene-escaped. */
+export function sectionQuery(section: SectionId, text: string, lang?: string): string {
+  return `(${text}) AND mediatype:texts AND ${sectionScope(section)}${languageClause(lang)}`;
 }
 
 /**

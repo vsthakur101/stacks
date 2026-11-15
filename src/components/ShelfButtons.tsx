@@ -83,3 +83,23 @@ export function ClearHistoryButton() {
     </button>
   );
 }
+
+/** Watch a search: count what's new on this shelf from now on. */
+export function MarkSeenButton({ id }: { id: string }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        await api(`/api/shelves/${id}/seen`, { body: {} }).catch(() => undefined);
+        router.refresh();
+      }}
+      className="text-sm text-ink-soft underline-offset-4 hover:text-ink hover:underline disabled:opacity-50"
+    >
+      Mark as seen
+    </button>
+  );
+}
