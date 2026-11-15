@@ -516,3 +516,9 @@ button:disabled {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
+
+/* Read aloud: the sentence being read, a soft wash in the theme's accent. */
+.speaking-mark {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  mix-blend-mode: multiply;
+}

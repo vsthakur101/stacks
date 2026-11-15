@@ -1,6 +1,6 @@
 'use client';
 
-import { BookA, ChevronLeft, ChevronRight, Maximize2, MoveHorizontal, Minus, Plus, Search, TableOfContents } from 'lucide-react';
+import { BookA, ChevronLeft, ChevronRight, Maximize2, MoveHorizontal, Minus, Plus, Search, TableOfContents, Volume2 } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -9,6 +9,7 @@ import { Bookmark, Highlighter, NotesPanel, PageAnnotations, StickyNote, useAnno
 import { ContentsPanel, useBookPrefs } from './ContentsPanel';
 import { FindPanel, useFind } from './FindPanel';
 import { LookupPanel } from './LookupPanel';
+import { ReadAloudBar, SpeakingMarks, useReadAloud } from './ReadAloud';
 import { ReaderBar, useSaveProgress } from './ReaderChrome';
 import { FindMarks, TextLayer } from './TextLayer';
 
@@ -171,6 +172,17 @@ export function PdfReader({
   }, [page, total, save]);
 
   const go = useCallback((n: number) => setPage((p) => (total ? Math.min(Math.max(1, n), total) : p)), [total]);
+  const ra = useReadAloud({ doc, page, total, go });
+  const [reading, setReading] = useState(false);
+  const toggleReading = useCallback(() => {
+    if (reading) {
+      ra.stop();
+      setReading(false);
+    } else {
+      setReading(true);
+      ra.play();
+    }
+  }, [reading, ra]);
   const zoomBy = useCallback((dir: 1 | -1) => setZoom((z) => ZOOMS[Math.min(Math.max(0, ZOOMS.indexOf(z) + dir), ZOOMS.length - 1)]!), []);
 
   // Keyboard.
@@ -207,6 +219,11 @@ export function PdfReader({
         e.preventDefault();
         return;
       }
+      if (key === 'a') {
+        toggleReading();
+        e.preventDefault();
+        return;
+      }
       if (key === 'n') {
         togglePanel('notes');
         e.preventDefault();
@@ -230,7 +247,7 @@ export function PdfReader({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [go, page, total, zoomBy, annotations, drawing, panel, togglePanel, lookUp]);
+  }, [go, page, total, zoomBy, annotations, drawing, panel, togglePanel, lookUp, toggleReading]);
 
   /**
    * Click the left or right third of the page to turn. On text, wait a moment: the click may be the
@@ -281,6 +298,11 @@ export function PdfReader({
         <button type="button" className={cn(btn, panel === 'lookup' && 'text-ink')} onClick={() => togglePanel('lookup')} aria-pressed={panel === 'lookup'} aria-label="Look up a word (L)" title="Look up a word (L, or double-click a word)">
           <BookA className="size-4" />
         </button>
+        {ra.supported ? (
+          <button type="button" className={cn(btn, reading && 'text-ink')} onClick={toggleReading} aria-pressed={reading} aria-label="Read aloud (A)" title="Read aloud (A)">
+            <Volume2 className="size-4" />
+          </button>
+        ) : null}
         <span aria-hidden className="mx-1 h-5 w-px bg-rule" />
         <button
           type="button"
@@ -348,11 +370,13 @@ export function PdfReader({
               />
               {doc && scale ? <TextLayer doc={doc} page={page} scale={scale} /> : null}
               {marks.length ? <FindMarks rects={marks} /> : null}
+              {reading ? <SpeakingMarks rects={ra.current} /> : null}
               {doc ? <PageAnnotations doc={doc} page={page} drawing={drawing} annotations={annotations} onCreated={() => undefined} onLookup={lookUp} /> : null}
             </div>
           </div>
         )}
       </div>
+      {reading ? <ReadAloudBar ra={ra} page={page} onStop={toggleReading} /> : null}
       {drawing ? (
         <p role="status" className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 rounded-full bg-ink px-3 py-1 text-xs text-paper">
           Drag a box around a passage. Press H or Esc to stop.
