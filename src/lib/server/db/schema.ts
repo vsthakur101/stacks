@@ -142,3 +142,17 @@ export const bookPrefs = sqliteTable('book_prefs', {
   pageOffset: integer('page_offset'),
   updatedAt: integer('updated_at').notNull(),
 });
+
+/** Time spent reading, per file per day (Reading page). Counted only while the reader is visible and in use. */
+export const readingDays = sqliteTable(
+  'reading_days',
+  {
+    file: text('file').notNull(),
+    /** Local date, YYYY-MM-DD. */
+    day: text('day').notNull(),
+    seconds: integer('seconds').notNull().default(0),
+    /** New pages reached that day. */
+    pages: integer('pages').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.file, t.day] }), index('idx_reading_days_day').on(t.day)],
+);

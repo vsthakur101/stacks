@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
-import { ReaderBar, useSaveProgress } from './ReaderChrome';
+import { ReaderBar, useReadingTimer, useSaveProgress } from './ReaderChrome';
 
 /** Plain-text files (archive.org's recognised text) as reading text; remembers the scroll position. */
 export function TextReader({
@@ -24,6 +24,7 @@ export function TextReader({
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const save = useSaveProgress(file);
+  useReadingTimer(file);
 
   useEffect(() => {
     const el = scroller.current;

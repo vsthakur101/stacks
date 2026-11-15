@@ -10,7 +10,7 @@ import { ContentsPanel, useBookPrefs } from './ContentsPanel';
 import { FindPanel, useFind } from './FindPanel';
 import { LookupPanel } from './LookupPanel';
 import { ReadAloudBar, SpeakingMarks, useReadAloud } from './ReadAloud';
-import { ReaderBar, useSaveProgress } from './ReaderChrome';
+import { ReaderBar, useReadingTimer, useSaveProgress } from './ReaderChrome';
 import { FindMarks, TextLayer } from './TextLayer';
 
 type Panel = 'contents' | 'find' | 'lookup' | 'notes';
@@ -174,6 +174,8 @@ export function PdfReader({
   const go = useCallback((n: number) => setPage((p) => (total ? Math.min(Math.max(1, n), total) : p)), [total]);
   const ra = useReadAloud({ doc, page, total, go });
   const [reading, setReading] = useState(false);
+  // Listening counts as reading even without touching anything.
+  useReadingTimer(file, total ? page : undefined, ra.state === 'playing');
   const toggleReading = useCallback(() => {
     if (reading) {
       ra.stop();

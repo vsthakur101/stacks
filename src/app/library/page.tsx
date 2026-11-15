@@ -104,6 +104,9 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
             <Link href="/notes" className="text-accent underline-offset-4 hover:underline">
               Highlights &amp; notes
             </Link>
+            <Link href="/reading" className="text-accent underline-offset-4 hover:underline">
+              Reading
+            </Link>
           </div>
         </div>
       </div>

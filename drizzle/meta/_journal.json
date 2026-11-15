@@ -43,6 +43,13 @@
       "when": 1794752287433,
       "tag": "0005_book_text_norm",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1794753603393,
+      "tag": "0006_reading_days",
+      "breakpoints": true
     }
   ]
 }
