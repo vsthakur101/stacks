@@ -1,6 +1,6 @@
 /**
  * Runs once when the server starts: wake the download queue so interrupted work resumes without a
- * page visit, and start the daily backup copy.
+ * page visit; start the daily backup copy and the background reading of book text (Library search).
  */
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
@@ -8,4 +8,6 @@ export async function register(): Promise<void> {
   getManager();
   const { startDailyBackups } = await import('./lib/server/backup');
   startDailyBackups();
+  const { startLibraryIndexing } = await import('./lib/server/library/librarySearch');
+  startLibraryIndexing();
 }

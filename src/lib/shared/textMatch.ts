@@ -46,6 +46,14 @@ export function allowedErrors(length: number): number {
   return Math.floor(length / 6);
 }
 
+/** Queries this short (normalised characters) must match at the start of a word. */
+const SHORT_QUERY = 4;
+
+function startsWord(text: string, offset: number): boolean {
+  if (offset === 0) return true;
+  return /[\s\p{P}\p{S}]/u.test(text[offset - 1]!);
+}
+
 export interface RawMatch {
   /** Offsets in the original text, end exclusive. */
   start: number;
@@ -71,7 +79,13 @@ export function findInText(text: string, query: string, close: boolean): RawMatc
 
   const k = close ? allowedErrors(query.length) : 0;
   if (k === 0) {
-    for (let at = norm.indexOf(query); at !== -1; at = norm.indexOf(query, at + query.length)) out.push(toRaw(at, at + query.length, 0));
+    // Ignoring spaces lets a short query straddle two words ("फिर घुनके" holds "रघु"): short queries
+    // must start a word. Longer ones may not (OCR splits words), and such accidents are rare.
+    const wordStart = query.length <= SHORT_QUERY;
+    for (let at = norm.indexOf(query); at !== -1; at = norm.indexOf(query, at + query.length)) {
+      if (wordStart && !startsWord(text, map[at]!)) continue;
+      out.push(toRaw(at, at + query.length, 0));
+    }
     return out;
   }
 

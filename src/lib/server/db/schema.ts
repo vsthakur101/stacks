@@ -129,6 +129,8 @@ export const bookTextPages = sqliteTable(
     text: text('text').notNull(),
     /** [[start, length, x, y, w, h], …]: each item's offset in `text` and its box as fractions of the page. */
     itemsJson: text('items_json').notNull(),
+    /** `text` normalised for matching (no spaces, punctuation, nukta…): library-wide search with instr(). */
+    norm: text('norm'),
   },
   (t) => [primaryKey({ columns: [t.file, t.page] })],
 );

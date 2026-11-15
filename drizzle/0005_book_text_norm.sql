@@ -1,0 +1,1 @@
+ALTER TABLE `book_text_pages` ADD `norm` text;

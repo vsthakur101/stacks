@@ -1,10 +1,10 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 import fs from 'node:fs/promises';
 import { getDb } from '../db/client';
 import { bookPrefs, bookTextPages, bookTexts } from '../db/schema';
 import { toDevanagari } from '../search/variants';
 import type { Rect } from '@/lib/shared/annotations';
-import { findInText, normalizeQuery, rectsFor, snippetFor, type PageItem, type Snippet } from '@/lib/shared/textMatch';
+import { findInText, normalizeQuery, normalizeWithMap, rectsFor, snippetFor, type PageItem, type Snippet } from '@/lib/shared/textMatch';
 
 /**
  * Text of downloaded PDFs, extracted once with pdf.js (in Node) and kept in SQLite. Raghuvansham,
@@ -86,7 +86,7 @@ export function ensureBookText(absolute: string, relative: string): Promise<Book
     db.transaction((tx) => {
       tx.delete(bookTextPages).where(eq(bookTextPages.file, relative)).run();
       for (const p of pages) {
-        tx.insert(bookTextPages).values({ file: relative, page: p.page, text: p.text, itemsJson: JSON.stringify(p.items) }).run();
+        tx.insert(bookTextPages).values({ file: relative, page: p.page, text: p.text, itemsJson: JSON.stringify(p.items), norm: normalizeWithMap(p.text).norm }).run();
       }
       const row = { size: stat.size, mtimeMs: Math.floor(stat.mtimeMs), pages: pages.length, chars, medianChars: median, extractedAt: Date.now() };
       tx.insert(bookTexts).values({ file: relative, ...row }).onConflictDoUpdate({ target: bookTexts.file, set: row }).run();
@@ -95,6 +95,23 @@ export function ensureBookText(absolute: string, relative: string): Promise<Book
   })().finally(() => inFlight.delete(relative));
   inFlight.set(relative, job);
   return job;
+}
+
+/** Whether the stored text is current for this file (no extraction needed). */
+export function isTextCurrent(relative: string, size: number, mtimeMs: number): boolean {
+  return infoFor(relative, size, mtimeMs) !== null;
+}
+
+/** Fills in normalised text for pages extracted before it was stored. Returns how many pages. */
+export function backfillNorm(limit = 5000): number {
+  const db = getDb();
+  const rows = db.select({ file: bookTextPages.file, page: bookTextPages.page, text: bookTextPages.text }).from(bookTextPages).where(isNull(bookTextPages.norm)).limit(limit).all();
+  db.transaction((tx) => {
+    for (const r of rows) {
+      tx.update(bookTextPages).set({ norm: normalizeWithMap(r.text).norm }).where(and(eq(bookTextPages.file, r.file), eq(bookTextPages.page, r.page))).run();
+    }
+  });
+  return rows.length;
 }
 
 export function storedPages(file: string): { page: number; text: string; itemsJson: string }[] {
@@ -123,7 +140,7 @@ const DEVANAGARI = /[ऀ-ॿ]/g;
 const LATIN = /[A-Za-z]/g;
 
 /** Whether the book is written mostly in Devanagari (judged from a sample of its pages). */
-function mostlyDevanagari(pages: { text: string }[]): boolean {
+export function mostlyDevanagari(pages: { text: string }[]): boolean {
   let deva = 0;
   let latin = 0;
   for (const p of pages.filter((_, i) => i % 7 === 0)) {

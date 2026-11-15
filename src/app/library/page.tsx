@@ -97,9 +97,14 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
         <SearchBox action="/library" placeholder="Search your library" defaultValue={q} hidden={hidden} />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <FilterBar menus={menus} />
-          <Link href="/notes" className="text-sm text-accent underline-offset-4 hover:underline">
-            Highlights &amp; notes
-          </Link>
+          <div className="flex items-center gap-5 text-sm">
+            <Link href={q ? `/library/inside?${new URLSearchParams({ q })}` : '/library/inside'} className="text-accent underline-offset-4 hover:underline">
+              {q ? `Search inside your books for “${q}”` : 'Search inside your books'}
+            </Link>
+            <Link href="/notes" className="text-accent underline-offset-4 hover:underline">
+              Highlights &amp; notes
+            </Link>
+          </div>
         </div>
       </div>
 

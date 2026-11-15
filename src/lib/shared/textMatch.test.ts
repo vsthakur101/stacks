@@ -38,6 +38,8 @@ describe('find in text', () => {
     expect(allowedErrors(3)).toBe(0);
     expect(hits('राम रामा', 'राम')).toHaveLength(2);
     expect(hits('काम', 'राम')).toEqual([]);
+    // A short query can't straddle two words once spaces are ignored.
+    expect(hits('फिर घुनके रघुवंशम्', 'रघु')).toEqual([['रघु', 0]]);
   });
 
   it('reports one match per place, not one per candidate end', () => {
