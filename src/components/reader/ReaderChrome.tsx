@@ -5,12 +5,12 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef } from 'react';
 
 /** The reader's thin top bar: back, title, and whatever controls the format needs. */
-export function ReaderBar({ title, backHref, children }: { title: string; backHref: string; children?: React.ReactNode }) {
+export function ReaderBar({ title, backHref, backLabel = 'Library', children }: { title: string; backHref: string; backLabel?: string; children?: React.ReactNode }) {
   return (
     <div className="flex h-14 shrink-0 items-center gap-3 border-b border-rule bg-panel px-3 sm:px-5">
       <Link href={backHref} className="-ml-1 inline-flex min-h-10 items-center gap-2 rounded-full px-3 text-sm text-ink-soft hover:bg-raised hover:text-ink">
         <ArrowLeft aria-hidden className="size-4" />
-        <span className="hidden sm:inline">Library</span>
+        <span className="hidden sm:inline">{backLabel}</span>
       </Link>
       <h1 className="font-title min-w-0 flex-1 truncate text-[1.02rem] text-ink">{title}</h1>
       <div className="flex shrink-0 items-center gap-1 text-sm">{children}</div>
