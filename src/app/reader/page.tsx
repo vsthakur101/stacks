@@ -17,7 +17,9 @@ const TEXT_LIMIT = 4 * 1024 * 1024;
 
 /** Reads a file from the download folder: PDFs on pdf.js, plain text as reading text. */
 export default async function ReaderPage({ searchParams }: { searchParams: SearchParams }) {
-  const relative = str((await searchParams).file);
+  const sp = await searchParams;
+  const relative = str(sp.file);
+  const askedPage = Number(str(sp.page));
   const root = getSettings().downloadRoot;
   const file = relative ? await findLibraryFile(root, relative) : null;
   if (!file || (file.ext !== 'pdf' && file.ext !== 'txt')) notFound();
@@ -30,7 +32,8 @@ export default async function ReaderPage({ searchParams }: { searchParams: Searc
   const next = nextVol ? { href: `/reader?file=${encodeURIComponent(nextVol.relative)}`, label: nextVol.label } : undefined;
 
   if (file.ext === 'pdf') {
-    return <PdfReader file={file.relative} title={title} backHref={backHref} initialPage={progress?.page ?? 1} next={next} />;
+    const start = Number.isInteger(askedPage) && askedPage >= 1 ? askedPage : (progress?.page ?? 1);
+    return <PdfReader file={file.relative} title={title} backHref={backHref} initialPage={start} next={next} />;
   }
 
   const handle = await fs.open(file.path, 'r');

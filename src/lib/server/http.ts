@@ -15,6 +15,7 @@ export const TTL = {
   metadata: 24 * 60 * 60,
   listing: 7 * 24 * 60 * 60,
   transliteration: 30 * 24 * 60 * 60,
+  dictionary: 30 * 24 * 60 * 60,
 } as const;
 
 export class UpstreamError extends Error {
@@ -63,11 +64,11 @@ export function setFetchForTests(impl: typeof fetch | undefined): void {
   globalForHttp.__stacksFetchForTests = impl;
 }
 
-async function download(url: string, timeoutMs: number): Promise<string> {
+async function download(url: string, timeoutMs: number, accept = 'application/json'): Promise<string> {
   return limitFor(url)(async () => {
     const doFetch = globalForHttp.__stacksFetchForTests ?? httpFetch;
     const res = await doFetch(url, {
-      headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
+      headers: { 'User-Agent': USER_AGENT, Accept: accept },
       signal: AbortSignal.timeout(timeoutMs),
       redirect: 'follow',
     });
@@ -86,12 +87,12 @@ function store(url: string, body: string, ttlS: number): void {
 }
 
 /** Refreshes a cached URL without anyone waiting on it. One refresh per URL at a time. */
-function revalidate<T>(url: string, ttlS: number, parse: (raw: unknown) => T, timeoutMs: number): void {
+function revalidate<T>(url: string, ttlS: number, decode: (body: string) => T, timeoutMs: number, accept?: string): void {
   if (revalidating.has(url)) return;
   revalidating.add(url);
-  download(url, timeoutMs)
+  download(url, timeoutMs, accept)
     .then((body) => {
-      parse(JSON.parse(body)); // only cache shapes we can use
+      decode(body); // only cache shapes we can use
       store(url, body, ttlS);
     })
     .catch(() => undefined) // the old copy stays; we'll try again next time it's asked for
@@ -105,23 +106,33 @@ function revalidate<T>(url: string, ttlS: number, parse: (raw: unknown) => T, ti
  * - No copy, or a very old one: fetched now; if that fails, any old copy is served marked `stale`.
  * `parse` validates/normalizes the raw JSON and throws on shapes we can't use.
  */
-export async function getJson<T>(
+export function getJson<T>(
   url: string,
   ttlS: number,
   parse: (raw: unknown) => T,
   opts: { timeoutMs?: number } = {},
+): Promise<CachedJson<T>> {
+  return getCached(url, ttlS, (body) => parse(JSON.parse(body)), opts);
+}
+
+/** Like getJson for any text body (HTML dictionary pages); `decode` validates and converts it. */
+export async function getCached<T>(
+  url: string,
+  ttlS: number,
+  decode: (body: string) => T,
+  opts: { timeoutMs?: number; accept?: string } = {},
 ): Promise<CachedJson<T>> {
   const timeoutMs = opts.timeoutMs ?? API_TIMEOUT_MS;
   const cached = getDb().select().from(httpCache).where(eq(httpCache.url, url)).get();
   const age = cached ? Date.now() - cached.fetchedAt : Infinity;
 
   if (cached && age < cached.ttlS * 1000) {
-    return { data: parse(JSON.parse(cached.body)), stale: false };
+    return { data: decode(cached.body), stale: false };
   }
   if (cached && age < cached.ttlS * 1000 + MAX_STALE_MS) {
     try {
-      const data = parse(JSON.parse(cached.body));
-      revalidate(url, ttlS, parse, timeoutMs);
+      const data = decode(cached.body);
+      revalidate(url, ttlS, decode, timeoutMs, opts.accept);
       return { data, stale: false };
     } catch {
       // Unusable old copy: fall through and fetch.
@@ -129,12 +140,12 @@ export async function getJson<T>(
   }
 
   try {
-    const body = await download(url, timeoutMs);
-    const data = parse(JSON.parse(body));
+    const body = await download(url, timeoutMs, opts.accept);
+    const data = decode(body);
     store(url, body, ttlS);
     return { data, stale: false };
   } catch (error) {
-    if (cached) return { data: parse(JSON.parse(cached.body)), stale: true };
+    if (cached) return { data: decode(cached.body), stale: true };
     if (error instanceof UpstreamError) throw error;
     throw new UpstreamError(error instanceof Error ? error.message : 'Request failed', url);
   }
@@ -147,7 +158,7 @@ export async function getJson<T>(
  */
 export function peekJson<T>(url: string, ttlS: number, parse: (raw: unknown) => T): T | null {
   const cached = getDb().select().from(httpCache).where(eq(httpCache.url, url)).get();
-  if (!cached || Date.now() - cached.fetchedAt >= cached.ttlS * 1000) revalidate(url, ttlS, parse, API_TIMEOUT_MS);
+  if (!cached || Date.now() - cached.fetchedAt >= cached.ttlS * 1000) revalidate(url, ttlS, (body) => parse(JSON.parse(body)), API_TIMEOUT_MS);
   if (!cached) return null;
   try {
     return parse(JSON.parse(cached.body));

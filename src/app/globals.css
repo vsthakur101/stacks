@@ -451,3 +451,68 @@ button:disabled {
 [data-theme='poster'] .rounded-\[1\.25rem\] {
   border-radius: 2px;
 }
+
+/* ───────────────────────── Reader: selectable text and find marks ───────────────────────── */
+/* pdf.js text layer (from pdfjs-dist/web/pdf_viewer.css, trimmed): invisible text over the scan. */
+.textLayer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  text-align: initial;
+  line-height: 1;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  z-index: 0;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+.textLayer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+  user-select: text;
+}
+.textLayer > :not(.markedContent),
+.textLayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+.textLayer .markedContent {
+  display: contents;
+}
+.textLayer ::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: transparent;
+}
+.textLayer br::selection {
+  background: transparent;
+}
+.textLayer .endOfContent {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  z-index: 0;
+  cursor: default;
+  user-select: none;
+}
+
+/* Find matches on the page: amber wash, the current one outlined in the theme's accent. */
+.find-mark {
+  background: rgb(250 190 40 / 0.35);
+  mix-blend-mode: multiply;
+}
+.find-mark-current {
+  background: rgb(250 170 20 / 0.5);
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}

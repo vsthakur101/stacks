@@ -1,4 +1,4 @@
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 export const httpCache = sqliteTable('http_cache', {
   url: text('url').primaryKey(),
@@ -80,7 +80,63 @@ export const readingProgress = sqliteTable(
   (t) => [index('idx_reading_progress_updated_at').on(t.updatedAt)],
 );
 
+/** Highlights (boxes drawn on a page), bookmarks and page notes in downloaded files. */
+export const annotations = sqliteTable(
+  'annotations',
+  {
+    id: text('id').primaryKey(),
+    /** Path inside the download folder. */
+    file: text('file').notNull(),
+    identifier: text('identifier'),
+    page: integer('page').notNull(),
+    kind: text('kind').notNull(), // highlight | bookmark | note
+    /** Box as fractions of the page: {"x":0.1,"y":0.2,"w":0.5,"h":0.1}. Highlights only. */
+    rectJson: text('rect_json'),
+    color: text('color'),
+    note: text('note'),
+    /** Text found under the box when the page has a usable text layer. */
+    text: text('text'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (t) => [index('idx_annotations_file').on(t.file), index('idx_annotations_updated_at').on(t.updatedAt)],
+);
+
 export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
+});
+
+/** Text extracted once from a downloaded PDF (Find, page-number suggestions). Re-read when the file changes. */
+export const bookTexts = sqliteTable('book_texts', {
+  /** Path inside the download folder. */
+  file: text('file').primaryKey(),
+  size: integer('size').notNull(),
+  mtimeMs: integer('mtime_ms').notNull(),
+  pages: integer('pages').notNull(),
+  chars: integer('chars').notNull(),
+  /** Median characters per page: under ~200 means the scan has no real recognised text. */
+  medianChars: integer('median_chars').notNull(),
+  extractedAt: integer('extracted_at').notNull(),
+});
+
+export const bookTextPages = sqliteTable(
+  'book_text_pages',
+  {
+    file: text('file').notNull(),
+    page: integer('page').notNull(),
+    /** NFC text of the page's items, joined by spaces. */
+    text: text('text').notNull(),
+    /** [[start, length, x, y, w, h], …]: each item's offset in `text` and its box as fractions of the page. */
+    itemsJson: text('items_json').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.file, t.page] })],
+);
+
+/** Per-book reading preferences. */
+export const bookPrefs = sqliteTable('book_prefs', {
+  file: text('file').primaryKey(),
+  /** PDF page minus printed page number (e.g. 5 when PDF page 166 is printed page 161). */
+  pageOffset: integer('page_offset'),
+  updatedAt: integer('updated_at').notNull(),
 });

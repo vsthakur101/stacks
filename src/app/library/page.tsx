@@ -95,7 +95,12 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
       />
       <div className="mb-8 max-w-3xl space-y-4">
         <SearchBox action="/library" placeholder="Search your library" defaultValue={q} hidden={hidden} />
-        <FilterBar menus={menus} />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <FilterBar menus={menus} />
+          <Link href="/notes" className="text-sm text-accent underline-offset-4 hover:underline">
+            Highlights &amp; notes
+          </Link>
+        </div>
       </div>
 
       {lib.entries.length === 0 ? (

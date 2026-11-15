@@ -1,11 +1,18 @@
 'use client';
 
-import { ChevronLeft, ChevronRight, Maximize2, MoveHorizontal, Minus, Plus } from 'lucide-react';
+import { BookA, ChevronLeft, ChevronRight, Maximize2, MoveHorizontal, Minus, Plus, Search, TableOfContents } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
+import { Bookmark, Highlighter, NotesPanel, PageAnnotations, StickyNote, useAnnotations } from './annotations';
+import { ContentsPanel, useBookPrefs } from './ContentsPanel';
+import { FindPanel, useFind } from './FindPanel';
+import { LookupPanel } from './LookupPanel';
 import { ReaderBar, useSaveProgress } from './ReaderChrome';
+import { FindMarks, TextLayer } from './TextLayer';
+
+type Panel = 'contents' | 'find' | 'lookup' | 'notes';
 
 type Fit = 'width' | 'page';
 const ZOOMS = [0.5, 0.67, 0.8, 1, 1.25, 1.5, 2, 3];
@@ -38,6 +45,20 @@ export function PdfReader({
   const stage = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const cache = useRef(new Map<string, HTMLCanvasElement>());
+  const [drawing, setDrawing] = useState(false);
+  const [panel, setPanel] = useState<Panel | null>(null);
+  const togglePanel = useCallback((p: Panel) => setPanel((cur) => (cur === p ? null : p)), []);
+  const [scale, setScale] = useState(0);
+  const turnTimer = useRef<number | undefined>(undefined);
+  const annotations = useAnnotations(file);
+  const find = useFind(file);
+  const prefs = useBookPrefs(file);
+  const [lookup, setLookup] = useState<{ word: string; n: number } | null>(null);
+  const lookUp = useCallback((word: string) => {
+    setLookup((r) => ({ word, n: (r?.n ?? 0) + 1 }));
+    setPanel('lookup');
+  }, []);
+  const bookmarked = annotations.items.some((a) => a.kind === 'bookmark' && a.page === page);
   const save = useSaveProgress(file);
   const total = doc?.numPages ?? 0;
 
@@ -49,7 +70,8 @@ export function PdfReader({
       try {
         const pdfjs = await import('pdfjs-dist');
         pdfjs.GlobalWorkerOptions.workerSrc = '/pdf-worker';
-        const loading = pdfjs.getDocument({ url: `/api/file?file=${encodeURIComponent(file)}`, rangeChunkSize: 1 << 20, disableAutoFetch: true });
+        // wasmUrl: decoders for JPEG 2000 (DLI scans) and JBIG2 images; without them those pages are blank.
+        const loading = pdfjs.getDocument({ url: `/api/file?file=${encodeURIComponent(file)}`, rangeChunkSize: 1 << 20, disableAutoFetch: true, wasmUrl: '/pdf-wasm/' });
         task = loading;
         const loaded = await loading.promise;
         if (cancelled) return;
@@ -99,6 +121,7 @@ export function PdfReader({
       off.height = Math.floor(viewport.height);
       off.style.width = `${Math.floor(viewport.width / dpr)}px`;
       off.style.height = `${Math.floor(viewport.height / dpr)}px`;
+      off.dataset.scale = String(cssScale);
       await pdfPage.render({ canvas: off, viewport }).promise;
       // Keep only a handful of rendered pages.
       if (cache.current.size > 8) cache.current.delete(cache.current.keys().next().value!);
@@ -120,7 +143,11 @@ export function PdfReader({
       target.style.width = off.style.width;
       target.style.height = off.style.height;
       target.getContext('2d')?.drawImage(off, 0, 0);
-      stage.current?.scrollTo({ top: 0 });
+      setScale(Number(off.dataset.scale));
+      // A new page starts at its top, unless Find is showing a match on it.
+      const mark = stage.current?.querySelector('[data-current]');
+      if (mark) mark.scrollIntoView({ block: 'center' });
+      else stage.current?.scrollTo({ top: 0 });
       void renderPage(page + 1).catch(() => undefined);
       void renderPage(page - 1).catch(() => undefined);
     })();
@@ -140,7 +167,48 @@ export function PdfReader({
   // Keyboard.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.metaKey || e.ctrlKey || e.altKey) return;
+      // ⌘F / Ctrl+F finds in the book (the browser's find only sees the current page).
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setPanel('find');
+        document.getElementById('find-q')?.focus();
+        return;
+      }
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.metaKey || e.ctrlKey || e.altKey) return;
+      const key = e.key.toLowerCase();
+      if (key === 'c' || key === 'f') {
+        togglePanel(key === 'c' ? 'contents' : 'find');
+        e.preventDefault();
+        return;
+      }
+      if (key === 'l') {
+        const selected = window.getSelection()?.toString().trim();
+        if (selected) lookUp(selected);
+        else togglePanel('lookup');
+        e.preventDefault();
+        return;
+      }
+      if (e.key === 'h' || e.key === 'H') {
+        setDrawing((d) => !d);
+        e.preventDefault();
+        return;
+      }
+      if (e.key === 'b' || e.key === 'B') {
+        void annotations.toggleBookmark(page);
+        e.preventDefault();
+        return;
+      }
+      if (key === 'n') {
+        togglePanel('notes');
+        e.preventDefault();
+        return;
+      }
+      if (e.key === 'Escape' && (drawing || panel)) {
+        setDrawing(false);
+        setPanel(null);
+        e.preventDefault();
+        return;
+      }
       if (['ArrowRight', 'PageDown', 'j'].includes(e.key) || (e.key === ' ' && !e.shiftKey)) go(page + 1);
       else if (['ArrowLeft', 'PageUp', 'k'].includes(e.key) || (e.key === ' ' && e.shiftKey)) go(page - 1);
       else if (e.key === 'Home') go(1);
@@ -153,24 +221,94 @@ export function PdfReader({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [go, page, total, zoomBy]);
+  }, [go, page, total, zoomBy, annotations, drawing, panel, togglePanel, lookUp]);
 
-  /** Click the left or right third of the page to turn. */
+  /**
+   * Click the left or right third of the page to turn. On text, wait a moment: the click may be the
+   * first half of a double-click on a word.
+   */
   function onStageClick(e: React.MouseEvent) {
-    if (window.getSelection()?.toString()) return;
+    window.clearTimeout(turnTimer.current);
+    if (drawing || e.detail > 1 || window.getSelection()?.toString()) return;
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width;
-    if (x < 1 / 3) go(page - 1);
-    else if (x > 2 / 3) go(page + 1);
+    const dir = x < 1 / 3 ? -1 : x > 2 / 3 ? 1 : 0;
+    if (!dir) return;
+    if ((e.target as HTMLElement).closest('.textLayer')) turnTimer.current = window.setTimeout(() => go(page + dir), 300);
+    else go(page + dir);
   }
+
+  /** Double-click a word on the page to look it up. */
+  function onStageDoubleClick(e: React.MouseEvent) {
+    window.clearTimeout(turnTimer.current);
+    if (drawing || !(e.target as HTMLElement).closest('.textLayer')) return;
+    const word = window.getSelection()?.toString().trim();
+    if (word) lookUp(word);
+  }
+
+  // Outline find matches on this page; keep the current one in view.
+  const marks = panel === 'find' ? find.matches.flatMap((m, i) => (m.page === page ? m.rects.map((rect) => ({ rect, current: i === find.current })) : [])) : [];
+  useEffect(() => {
+    if (panel !== 'find') return;
+    const id = window.requestAnimationFrame(() => stage.current?.querySelector('[data-current]')?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
+    return () => window.cancelAnimationFrame(id);
+  }, [find.current, page, scale, panel]);
+
+  const printed = prefs.offset !== null && page - prefs.offset >= 1 ? page - prefs.offset : null;
 
   const btn = 'inline-flex size-10 items-center justify-center rounded-full text-ink-soft hover:bg-raised hover:text-ink disabled:opacity-40';
   return (
     <div className="fixed inset-0 z-40 flex flex-col bg-raised">
       <ReaderBar title={title} backHref={backHref}>
         <span className="mr-2 hidden tabular-nums text-ink-soft sm:inline" aria-live="polite">
-          {total ? `Page ${page} of ${total}` : 'Opening…'}
+          {!total ? 'Opening…' : printed !== null ? `p. ${printed} · ${page} of ${total}` : `Page ${page} of ${total}`}
         </span>
+        <button type="button" className={cn(btn, panel === 'contents' && 'text-ink')} onClick={() => togglePanel('contents')} aria-pressed={panel === 'contents'} aria-label="Contents and go to page (C)" title="Contents and go to page (C)">
+          <TableOfContents className="size-4" />
+        </button>
+        <button type="button" className={cn(btn, panel === 'find' && 'text-ink')} onClick={() => togglePanel('find')} aria-pressed={panel === 'find'} aria-label="Find in this book (F)" title="Find in this book (F or ⌘F)">
+          <Search className="size-4" />
+        </button>
+        <button type="button" className={cn(btn, panel === 'lookup' && 'text-ink')} onClick={() => togglePanel('lookup')} aria-pressed={panel === 'lookup'} aria-label="Look up a word (L)" title="Look up a word (L, or double-click a word)">
+          <BookA className="size-4" />
+        </button>
+        <span aria-hidden className="mx-1 h-5 w-px bg-rule" />
+        <button
+          type="button"
+          className={cn(btn, drawing && 'bg-accent text-accent-ink hover:bg-accent hover:text-accent-ink')}
+          onClick={() => setDrawing((d) => !d)}
+          aria-pressed={drawing}
+          aria-label="Highlight: draw a box around a passage (H)"
+          title="Highlight: draw a box around a passage (H)"
+        >
+          <Highlighter className="size-4" />
+        </button>
+        <button
+          type="button"
+          className={cn(btn, bookmarked && 'text-accent')}
+          onClick={() => void annotations.toggleBookmark(page)}
+          aria-pressed={bookmarked}
+          aria-label={bookmarked ? 'Remove bookmark (B)' : 'Bookmark this page (B)'}
+          title={bookmarked ? 'Remove bookmark (B)' : 'Bookmark this page (B)'}
+        >
+          <Bookmark className={cn('size-4', bookmarked && 'fill-current')} />
+        </button>
+        <button
+          type="button"
+          className={cn(btn, 'relative', panel === 'notes' && 'text-ink')}
+          onClick={() => togglePanel('notes')}
+          aria-pressed={panel === 'notes'}
+          aria-label="Highlights and notes (N)"
+          title="Highlights and notes (N)"
+        >
+          <StickyNote className="size-4" />
+          {annotations.items.length > 0 ? (
+            <span className="keep-round absolute top-1 right-1 min-w-4 rounded-full bg-accent px-1 text-[0.65rem] leading-4 font-medium text-accent-ink">
+              {annotations.items.length}
+            </span>
+          ) : null}
+        </button>
+        <span aria-hidden className="mx-1 h-5 w-px bg-rule" />
         <button type="button" className={btn} onClick={() => setFit(fit === 'width' ? 'page' : 'width')} aria-label={fit === 'width' ? 'Fit whole page' : 'Fit page width'} title={fit === 'width' ? 'Fit whole page' : 'Fit page width'}>
           {fit === 'width' ? <Maximize2 className="size-4" /> : <MoveHorizontal className="size-4" />}
         </button>
@@ -183,7 +321,8 @@ export function PdfReader({
         </button>
       </ReaderBar>
 
-      <div ref={stage} className="relative min-h-0 flex-1 overflow-auto" onClick={onStageClick}>
+      <div className="relative min-h-0 flex-1">
+      <div ref={stage} className="h-full overflow-auto" onClick={onStageClick} onDoubleClick={onStageDoubleClick}>
         {error ? (
           <div className="mx-auto max-w-prose px-6 py-16">
             <p className="font-display text-xl text-ink">This PDF couldn’t be opened.</p>
@@ -191,14 +330,31 @@ export function PdfReader({
           </div>
         ) : (
           <div className="flex min-h-full items-start justify-center p-4">
-            <canvas
-              ref={canvas}
-              role="img"
-              aria-label={total ? `Page ${page} of ${total}` : 'Loading page'}
-              className={cn('t-cover bg-white shadow-[0_2px_12px_rgb(0_0_0/0.18)]', !doc && 'opacity-0')}
-            />
+            <div className="relative">
+              <canvas
+                ref={canvas}
+                role="img"
+                aria-label={total ? `Page ${page} of ${total}` : 'Loading page'}
+                className={cn('t-cover block bg-white shadow-[0_2px_12px_rgb(0_0_0/0.18)]', !doc && 'opacity-0')}
+              />
+              {doc && scale ? <TextLayer doc={doc} page={page} scale={scale} /> : null}
+              {marks.length ? <FindMarks rects={marks} /> : null}
+              {doc ? <PageAnnotations doc={doc} page={page} drawing={drawing} annotations={annotations} onCreated={() => undefined} onLookup={lookUp} /> : null}
+            </div>
           </div>
         )}
+      </div>
+      {drawing ? (
+        <p role="status" className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 rounded-full bg-ink px-3 py-1 text-xs text-paper">
+          Drag a box around a passage. Press H or Esc to stop.
+        </p>
+      ) : null}
+      {panel === 'notes' ? <NotesPanel file={file} page={page} annotations={annotations} onGo={(n) => go(n)} onClose={() => setPanel(null)} /> : null}
+      {panel === 'contents' ? (
+        <ContentsPanel doc={doc} page={page} total={total} annotations={annotations} prefs={prefs} onGo={(n) => go(n)} onClose={() => setPanel(null)} />
+      ) : null}
+      {panel === 'find' ? <FindPanel find={find} page={page} onGo={(n) => go(n)} onClose={() => setPanel(null)} /> : null}
+      {panel === 'lookup' ? <LookupPanel request={lookup} onClose={() => setPanel(null)} /> : null}
       </div>
 
       <div className="flex h-14 shrink-0 items-center gap-3 border-t border-rule bg-panel px-3 sm:px-5">
