@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import { NextResponse } from 'next/server';
 import { apiError, guard, parseBody } from '@/lib/server/api';
+import { getManager } from '@/lib/server/downloads/instance';
 import { getSettings, saveSettings, settingsSchema } from '@/lib/server/settings';
 
 export const dynamic = 'force-dynamic';
@@ -18,6 +19,8 @@ export async function PUT(req: Request) {
   if ('error' in body) return body.error;
   try {
     const saved = saveSettings(body.data);
+    // A new window or cap applies at once.
+    getManager().checkWindow();
     await fs.mkdir(saved.downloadRoot, { recursive: true });
     await fs.access(saved.downloadRoot, fs.constants.W_OK);
     return NextResponse.json({ data: saved });

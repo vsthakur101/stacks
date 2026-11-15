@@ -12,12 +12,22 @@ export const settingsSchema = z.object({
     .min(1)
     .refine((p) => path.isAbsolute(p.replace(/^~(?=$|\/)/, os.homedir())), 'Must be an absolute path'),
   concurrency: z.number().int().min(1).max(6),
+  /** Shared cap for all downloads, KB/s; 0 = no limit. */
+  bandwidthKBps: z.number().int().min(0).max(1_000_000).default(0),
+  /** Only download inside a daily window (may wrap past midnight). */
+  windowEnabled: z.boolean().default(false),
+  windowStart: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).default('23:00'),
+  windowEnd: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).default('07:00'),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
 export const DEFAULT_SETTINGS: Settings = {
   downloadRoot: path.join(os.homedir(), 'Books', 'Archive'),
   concurrency: 3,
+  bandwidthKBps: 0,
+  windowEnabled: false,
+  windowStart: '23:00',
+  windowEnd: '07:00',
 };
 
 export function getSettings(): Settings {
@@ -35,8 +45,9 @@ export function getSettings(): Settings {
   return { ...value, downloadRoot: expandHome(value.downloadRoot) };
 }
 
-export function saveSettings(next: Settings): Settings {
-  const value = settingsSchema.parse({ ...next, downloadRoot: expandHome(next.downloadRoot) });
+/** Saves settings; fields left out keep their current values. */
+export function saveSettings(next: z.input<typeof settingsSchema>): Settings {
+  const value = settingsSchema.parse({ ...getSettings(), ...next, downloadRoot: expandHome(next.downloadRoot) });
   const db = getDb();
   for (const [key, v] of Object.entries(value)) {
     const json = JSON.stringify(v);

@@ -33,6 +33,8 @@ export interface DownloadOptions {
   onProgress: (bytesDone: number, bytesTotal: number | null) => void;
   stallMs?: number;
   fetchImpl?: typeof fetch;
+  /** Waits as needed to keep within the bandwidth cap (shared by all downloads). */
+  throttle?: (bytes: number) => Promise<void>;
 }
 
 /**
@@ -97,6 +99,10 @@ export async function downloadToFile(opts: DownloadOptions): Promise<void> {
         done += value.byteLength;
         if (!out.write(value)) await Promise.race([once(out, 'drain'), outError]);
         onProgress(done, total);
+        if (opts.throttle) {
+          await opts.throttle(value.byteLength);
+          armStall(); // waiting for the cap isn't a stalled connection
+        }
       }
     } finally {
       out.end();

@@ -244,3 +244,48 @@ describe('DownloadManager', () => {
     expect(m2.getJob(job)?.tasks[0]?.state).toBe('done');
   });
 });
+
+describe('download window and bandwidth cap', () => {
+  it('waits outside the window, runs when it opens, and puts stopped downloads back in the queue', async () => {
+    let open = false;
+    const slow = new Map<string, number>();
+    const { db } = openDb(':memory:');
+    const m = new DownloadManager({
+      db,
+      root: () => root,
+      concurrency: () => 3,
+      getItem: async (id) => items.get(id)!,
+      fileUrl: (id, name) => `${baseUrl}/${id}/${name}`,
+      backoffMs: () => 5,
+      window: () => ({ open, text: 'Downloads run between 23:00 and 07:00.' }),
+      // A slow cap so the window can close mid-download.
+      throttle: async (n) => {
+        slow.set('bytes', (slow.get('bytes') ?? 0) + n);
+        await new Promise((r) => setTimeout(r, 30));
+      },
+    });
+    m.init();
+    addItem('night', [{ name: 'night.pdf', format: 'Text PDF', body: bytes(3_000_000) }]);
+    const job = m.createJob([tray('night')], 'pdf', 'skip');
+    await new Promise((r) => setTimeout(r, 100));
+    expect(m.getJob(job)!.tasks[0]!.state).toBe('queued');
+    expect(m.queueStatus().waiting).toBe('Downloads run between 23:00 and 07:00.');
+
+    open = true;
+    m.checkWindow();
+    await new Promise((r) => setTimeout(r, 150));
+    expect(m.getJob(job)!.tasks[0]!.state).toBe('downloading');
+
+    open = false;
+    m.checkWindow();
+    await new Promise((r) => setTimeout(r, 150));
+    expect(m.getJob(job)!.tasks[0]).toMatchObject({ state: 'queued', note: 'Waiting for the download window' });
+
+    open = true;
+    m.checkWindow();
+    await m.idle();
+    expect(m.getJob(job)!.tasks[0]!.state).toBe('done');
+    // The second run resumed from the partial file.
+    expect(requests.filter((r) => r.path === '/night/night.pdf').some((r) => r.range)).toBe(true);
+  });
+});

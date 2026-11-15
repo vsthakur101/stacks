@@ -123,6 +123,8 @@ export interface JobView {
 export interface QueueStatus {
   paused: boolean;
   pauseReason: string | null;
+  /** Outside the download window: why nothing is running ("Downloads run 23:00–07:00"). */
+  waiting?: string | null;
 }
 
 export type DownloadEvent =

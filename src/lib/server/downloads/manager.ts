@@ -39,6 +39,9 @@ export interface ManagerDeps {
   backoffMs?: (attempt: number, retryAfterMs?: number) => number;
   fileUrl?: (identifier: string, fileName: string) => string;
   stallMs?: number;
+  /** Download window: whether downloads may run now, and how to say when they will. */
+  window?: () => { open: boolean; text: string } | null;
+  throttle?: (bytes: number) => Promise<void>;
 }
 
 class CancelledError extends Error {
@@ -61,6 +64,9 @@ export class DownloadManager extends EventEmitter {
   private readonly inflight = new Map<string, Promise<void>>();
   private readonly live = new Map<string, { bytesDone: number; persistedAt: number }>();
   private paused = false;
+  /** Tasks stopped because the download window closed: they go back to the queue, not to cancelled. */
+  private readonly windowStops = new Set<string>();
+  private windowTimer: NodeJS.Timeout | undefined;
   private pauseReason: string | null = null;
   private scheduling = false;
 
@@ -79,6 +85,8 @@ export class DownloadManager extends EventEmitter {
         ((id, name) =>
           `https://archive.org/download/${encodeURIComponent(id)}/${name.split('/').map(encodeURIComponent).join('/')}`),
       stallMs: deps.stallMs ?? 60_000,
+      window: deps.window ?? (() => null),
+      throttle: deps.throttle ?? (async () => undefined),
     };
   }
 
@@ -89,6 +97,22 @@ export class DownloadManager extends EventEmitter {
       .set({ state: 'queued', updatedAt: Date.now() })
       .where(inArray(downloadTasks.state, ['resolving', 'downloading', 'verifying']))
       .run();
+    this.schedule();
+    // The window opens and closes on the clock: check every 30 s.
+    this.windowTimer ??= setInterval(() => this.checkWindow(), 30_000);
+    this.windowTimer.unref?.();
+  }
+
+  /** Stops running downloads when the window closes (partials kept for resuming); starts them when it opens. */
+  checkWindow(): void {
+    const w = this.deps.window();
+    if (w && !w.open) {
+      for (const [id, controller] of this.running) {
+        this.windowStops.add(id);
+        controller.abort();
+      }
+    }
+    this.emitEvent({ type: 'queue', queue: this.queueStatus() });
     this.schedule();
   }
 
@@ -159,7 +183,8 @@ export class DownloadManager extends EventEmitter {
   /* ------------------------------ queries ------------------------------ */
 
   queueStatus(): QueueStatus {
-    return { paused: this.paused, pauseReason: this.pauseReason };
+    const w = this.deps.window();
+    return { paused: this.paused, pauseReason: this.pauseReason, waiting: w && !w.open ? w.text : null };
   }
 
   listJobs(limit = 50): JobView[] {
@@ -202,7 +227,8 @@ export class DownloadManager extends EventEmitter {
     if (this.scheduling) return;
     this.scheduling = true;
     try {
-      while (!this.paused && this.running.size < this.deps.concurrency()) {
+      const w = this.deps.window();
+      while (!this.paused && !(w && !w.open) && this.running.size < this.deps.concurrency()) {
         const next = this.nextQueued();
         if (!next) break;
         const controller = new AbortController();
@@ -242,6 +268,10 @@ export class DownloadManager extends EventEmitter {
       }
       await this.download(task, signal);
     } catch (error) {
+      if (this.windowStops.delete(task.id)) {
+        this.update(task.id, { state: 'queued', note: 'Waiting for the download window' });
+        return;
+      }
       if (error instanceof CancelledError || signal.aborted) {
         this.update(task.id, { state: 'cancelled' });
         return;
@@ -375,6 +405,7 @@ export class DownloadManager extends EventEmitter {
           signal,
           stallMs: this.deps.stallMs,
           fetchImpl: this.deps.fetchImpl,
+          throttle: this.deps.throttle,
           onProgress: (done, total) => this.progress(task.id, done, total),
         }),
       );

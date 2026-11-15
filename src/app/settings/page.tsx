@@ -24,7 +24,7 @@ export default async function SettingsPage() {
         <ThemePicker initial={theme} />
       </section>
       <section>
-        <h2 className="font-display mb-5 text-2xl text-ink">Downloads</h2>
+        <h2 id="downloads" className="font-display mb-5 scroll-mt-8 text-2xl text-ink">Downloads</h2>
         <SettingsForm initial={getSettings()} />
       </section>
       <section className="mt-14">

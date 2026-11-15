@@ -2,6 +2,7 @@ import { getDb } from '../db/client';
 import { pruneCache } from '../http';
 import { startConnectionWarming } from '../net';
 import { getSettings } from '../settings';
+import { inWindow, Throttle } from './limits';
 import { DownloadManager } from './manager';
 
 const globalForManager = globalThis as unknown as { __stacksManager?: DownloadManager };
@@ -13,6 +14,14 @@ export function getManager(): DownloadManager {
       db: getDb(),
       root: () => getSettings().downloadRoot,
       concurrency: () => getSettings().concurrency,
+      window: () => {
+        const s = getSettings();
+        return s.windowEnabled ? { open: inWindow(new Date(), s.windowStart, s.windowEnd), text: `Downloads run between ${s.windowStart} and ${s.windowEnd}.` } : null;
+      },
+      throttle: (() => {
+        const t = new Throttle(() => getSettings().bandwidthKBps * 1024);
+        return (bytes: number) => t.take(bytes);
+      })(),
     });
     globalForManager.__stacksManager = manager;
     try {

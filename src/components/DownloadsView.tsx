@@ -87,6 +87,15 @@ export function DownloadsView() {
           </button>
         </div>
       ) : null}
+      {!queue.paused && queue.waiting ? (
+        <p role="status" className="mb-10 border-l-2 border-accent pl-4 text-ink">
+          Waiting for the download window. {queue.waiting}{' '}
+          <a href="/settings#downloads" className="text-accent underline-offset-4 hover:underline">
+            Change it in Settings
+          </a>
+          .
+        </p>
+      ) : null}
       {actionError ? <p className="mb-6 text-sm text-danger">{actionError}</p> : null}
 
       {jobs === null ? (
