@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { CollectionMenu, CollectionTools, type CollectionOption } from '@/components/CollectionMenu';
 import { Cover } from '@/components/Cover';
 import { MatchFile, UnlinkFile } from '@/components/MatchFile';
+import { SendToDevice, type DeviceOption } from '@/components/SendToDevice';
 import { FileButtons } from '@/components/FileButtons';
 import { FilterBar, type FilterMenuSpec } from '@/components/FilterBar';
 import { languageMenu } from '@/components/filterMenus';
@@ -12,6 +13,7 @@ import { Empty, PageHeading } from '@/components/States';
 import { itemHref, TileGrid } from '@/components/Tiles';
 import { formatBytesServer } from '@/lib/format';
 import { SECTIONS } from '@/lib/server/catalog/sections';
+import { listDevices } from '@/lib/server/devices';
 import { fileRef, itemRef, listCollections, membersOf, membershipFor } from '@/lib/server/library/collections';
 import { buildLibrary, LIBRARY_SORTS, type LibraryEntry, type LibrarySort } from '@/lib/server/library/view';
 import { str, type SearchParams } from '@/lib/server/pageParams';
@@ -40,6 +42,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
   const collection = allCollections.find((c) => c.id === str(sp.c));
   const lib = await buildLibrary(root, { q, section, lang, sort, members: collection ? membersOf(collection.id) : undefined });
   const options: CollectionOption[] = allCollections.map((c) => ({ id: c.id, name: c.name }));
+  const devices: DeviceOption[] = (await listDevices().catch(() => [])).map((d) => ({ name: d.name }));
   const membership = membershipFor([...lib.entries.map((e) => itemRef(e.identifier)), ...lib.others.map((f) => fileRef(f.relative))]);
   const view = (changes: Record<string, string | undefined>) => hrefWith('/library', sp, changes);
 
@@ -118,6 +121,11 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
         <SearchBox action="/library" placeholder="Search your library" defaultValue={q} hidden={hidden} />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <FilterBar menus={menus} />
+          {devices.length ? (
+            <p className="w-full text-sm text-ink-soft">
+              {devices.map((d) => d.name).join(' and ')} {devices.length === 1 ? 'is' : 'are'} plugged in: each book has Send to {devices[0]!.name}.
+            </p>
+          ) : null}
           <div className="flex items-center gap-5 text-sm">
             <Link href={q ? `/library/inside?${new URLSearchParams({ q })}` : '/library/inside'} className="text-accent underline-offset-4 hover:underline">
               {q ? `Search inside your books for “${q}”` : 'Search inside your books'}
@@ -152,7 +160,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
           ) : null}
           <TileGrid>
             {lib.entries.map((e) => (
-              <LibraryTile key={e.identifier} entry={e} collections={options} member={membership.get(itemRef(e.identifier)) ?? []} />
+              <LibraryTile key={e.identifier} entry={e} collections={options} member={membership.get(itemRef(e.identifier)) ?? []} devices={devices} />
             ))}
           </TileGrid>
         </>
@@ -176,6 +184,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
                   <FileButtons target={{ file: f.relative }} />
                   <CollectionMenu itemRef={fileRef(f.relative)} all={options} member={membership.get(fileRef(f.relative)) ?? []} />
                   <MatchFile file={f.relative} />
+                  <SendToDevice devices={devices} target={{ file: f.relative }} />
                 </span>
               </li>
             ))}
@@ -191,7 +200,7 @@ function readable(entry: LibraryEntry) {
   return entry.files.find((f) => f.ext === 'pdf') ?? entry.files.find((f) => f.ext === 'epub') ?? entry.files.find((f) => f.ext === 'txt');
 }
 
-function LibraryTile({ entry, collections, member }: { entry: LibraryEntry; collections: CollectionOption[]; member: string[] }) {
+function LibraryTile({ entry, collections, member, devices }: { entry: LibraryEntry; collections: CollectionOption[]; member: string[]; devices: DeviceOption[] }) {
   const toRead = readable(entry);
   const formats = [...new Set(entry.files.map((f) => f.ext.toUpperCase()).filter(Boolean))].join(', ');
   // With several files, Open shows their folder (the API does the same).
@@ -217,6 +226,7 @@ function LibraryTile({ entry, collections, member }: { entry: LibraryEntry; coll
         ) : null}
         <FileButtons target={{ identifier: entry.identifier }} multiple={entry.files.length > 1} />
         <CollectionMenu itemRef={itemRef(entry.identifier)} all={collections} member={member} />
+        <SendToDevice devices={devices} target={{ identifier: entry.identifier }} />
         {entry.files
           .filter((f) => f.linked)
           .map((f) => (
