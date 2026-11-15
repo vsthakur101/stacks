@@ -7,11 +7,18 @@ import { getSettings } from '@/lib/server/settings';
 
 export const dynamic = 'force-dynamic';
 
-const TYPES: Record<string, string> = { pdf: 'application/pdf', txt: 'text/plain; charset=utf-8' };
+const TYPES: Record<string, string> = {
+  pdf: 'application/pdf',
+  txt: 'text/plain; charset=utf-8',
+  epub: 'application/epub+zip',
+  djvu: 'image/vnd.djvu',
+  mobi: 'application/x-mobipocket-ebook',
+};
 
 /**
- * Streams a file from the download folder for the reader, with Range support so pdf.js can open a
- * large PDF by fetching only the pieces it needs. Only paths the Library scan found are served.
+ * Streams a file from the download folder for the reader (and OPDS reading apps, `&download=1` for a
+ * file name), with Range support so pdf.js can open a large PDF by fetching only the pieces it needs.
+ * Only paths the Library scan found are served.
  */
 export async function GET(req: Request) {
   const denied = guard(req);
@@ -33,6 +40,9 @@ export async function GET(req: Request) {
     'Cache-Control': 'private, max-age=0, must-revalidate',
     'X-Content-Type-Options': 'nosniff',
   };
+  if (new URL(req.url).searchParams.get('download') === '1') {
+    headers['Content-Disposition'] = `attachment; filename*=UTF-8''${encodeURIComponent(file.name)}`;
+  }
   const range = parseRange(req.headers.get('range'), size);
   if (range === 'unsatisfiable') {
     return new Response(null, { status: 416, headers: { ...headers, 'Content-Range': `bytes */${size}` } });

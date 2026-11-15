@@ -89,7 +89,8 @@ export function createBackup(): Backup {
       bookPrefs: db.select().from(bookPrefs).all(),
       savedShelves: db.select().from(savedShelves).all(),
       searchHistory: db.select().from(searchHistory).all(),
-      settings: db.select().from(settings).all(),
+      // Phone access secrets (password hash, session key) never leave this Mac in a backup file.
+      settings: db.select().from(settings).all().filter((s) => !s.key.startsWith('remote')),
       collections: db.select().from(collections).all(),
       collectionMembers: db.select().from(collectionMembers).all(),
       readingDays: db.select().from(readingDays).all(),

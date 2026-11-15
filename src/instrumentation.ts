@@ -10,4 +10,6 @@ export async function register(): Promise<void> {
   startDailyBackups();
   const { startLibraryIndexing } = await import('./lib/server/library/librarySearch');
   startLibraryIndexing();
+  const { startRemoteAccess } = await import('./lib/server/remote/proxy');
+  startRemoteAccess();
 }
