@@ -4,14 +4,15 @@ import path from 'node:path';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { apiError, guard, parseBody } from '@/lib/server/api';
+import { backupDir } from '@/lib/server/backup';
 import { getManager } from '@/lib/server/downloads/instance';
 import { getSettings } from '@/lib/server/settings';
 
 export const dynamic = 'force-dynamic';
 
-const bodySchema = z.union([z.object({ taskId: z.string().uuid() }), z.object({ root: z.literal(true) })]);
+const bodySchema = z.union([z.object({ taskId: z.string().uuid() }), z.object({ root: z.literal(true) }), z.object({ backups: z.literal(true) })]);
 
-/** Shows a downloaded file (or the download folder) in Finder. Paths come from our DB, never from the client. */
+/** Shows a downloaded file (or the download folder, or the daily backups) in Finder. Paths come from our DB, never from the client. */
 export async function POST(req: Request) {
   const denied = guard(req);
   if (denied) return denied;
@@ -24,6 +25,9 @@ export async function POST(req: Request) {
     const task = getManager().getTask(body.data.taskId);
     if (!task?.destPath) return apiError(404, 'NOT_FOUND', 'No file for this download.');
     target = fs.existsSync(task.destPath) ? task.destPath : path.dirname(task.destPath);
+  } else if ('backups' in body.data) {
+    target = backupDir();
+    fs.mkdirSync(target, { recursive: true });
   } else {
     fs.mkdirSync(root, { recursive: true });
     target = root;

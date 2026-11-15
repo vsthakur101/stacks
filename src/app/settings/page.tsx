@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
+import { BackupPanel } from '@/components/BackupPanel';
 import { SettingsForm } from '@/components/SettingsForm';
 import { PageHeading } from '@/components/States';
 import { ThemePicker } from '@/components/ThemePicker';
+import { listDailyBackups } from '@/lib/server/backup';
 import { getSettings } from '@/lib/server/settings';
 import { parseTheme, THEME_COOKIE } from '@/lib/shared/themes';
 
@@ -22,6 +24,10 @@ export default async function SettingsPage() {
       <section>
         <h2 className="font-display mb-5 text-2xl text-ink">Downloads</h2>
         <SettingsForm initial={getSettings()} />
+      </section>
+      <section className="mt-14">
+        <h2 className="font-display mb-5 text-2xl text-ink">Backup</h2>
+        <BackupPanel daily={listDailyBackups()} />
       </section>
     </>
   );
