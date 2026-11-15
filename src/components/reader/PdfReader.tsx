@@ -28,6 +28,7 @@ export function PdfReader({
   backHref,
   initialPage,
   next,
+  initialFind,
 }: {
   file: string;
   title: string;
@@ -35,6 +36,8 @@ export function PdfReader({
   initialPage: number;
   /** The next volume of the set, when it's in the Library. */
   next?: { href: string; label: string };
+  /** Opens with Find already searching for this (from Search inside books). */
+  initialFind?: string;
 }) {
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,9 +54,15 @@ export function PdfReader({
   const [scale, setScale] = useState(0);
   const turnTimer = useRef<number | undefined>(undefined);
   const annotations = useAnnotations(file);
-  const find = useFind(file);
+  const find = useFind(file, page);
   const prefs = useBookPrefs(file);
   const [lookup, setLookup] = useState<{ word: string; n: number } | null>(null);
+  useEffect(() => {
+    if (!initialFind) return;
+    find.setQuery(initialFind);
+    setPanel('find');
+    // Only on arrival: later edits belong to the reader.
+  }, [initialFind]);
   const lookUp = useCallback((word: string) => {
     setLookup((r) => ({ word, n: (r?.n ?? 0) + 1 }));
     setPanel('lookup');

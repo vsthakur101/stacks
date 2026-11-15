@@ -24,7 +24,10 @@ interface FindResponse {
 }
 
 /** Find state lives in the reader so matches can be outlined on the page. */
-export function useFind(file: string) {
+export function useFind(file: string, page: number) {
+  // New results start at the first match on or after the page being read, like a browser's find.
+  const pageRef = useRef(page);
+  pageRef.current = page;
   const [query, setQuery] = useState('');
   const [close, setClose] = useState(true);
   const [result, setResult] = useState<FindResponse | null>(null);
@@ -47,7 +50,9 @@ export function useFind(file: string) {
         const data = await api<FindResponse>(`/api/find?${new URLSearchParams({ file, q: q.trim(), close: closeMatches ? '1' : '0' })}`);
         if (n !== seq.current) return;
         setResult(data);
-        setCurrent(0);
+        // Exact matches come first, then close ones: start at the first exact match from here on.
+        const here = data.matches.findIndex((m) => m.page >= pageRef.current && m.distance === 0);
+        setCurrent(Math.max(0, here));
       } catch (e) {
         if (n === seq.current) setError(e instanceof Error ? e.message : 'Find failed.');
       } finally {

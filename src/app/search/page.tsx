@@ -42,6 +42,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
         <PageHeading title="Search everything" lede="Books, newspapers, magazines, government documents and manuscripts." />
         <div className="max-w-3xl">
           <SearchBox action="/search" placeholder="Search titles, authors, publications" size="lg" autoFocus />
+          <p className="mt-4 text-sm text-ink-soft">
+            Looking for a passage, a verse or a name inside a book?{' '}
+            <Link href="/inside" className="text-accent underline-offset-4 hover:underline">
+              Search inside books
+            </Link>
+            .
+          </p>
         </div>
       </>
     );
@@ -79,6 +86,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
             />
           </Suspense>
         </FilterBar>
+        <p className="text-sm text-ink-soft">
+          <Link href={hrefWith('/inside', { q, ...(lang ? { lang } : {}) }, {})} className="text-accent underline-offset-4 hover:underline">
+            Search inside books for “{q}”
+          </Link>{' '}
+          to find it in the text of scans.
+        </p>
       </div>
       <Groups sp={sp} state={state} expanded={expanded} />
     </>

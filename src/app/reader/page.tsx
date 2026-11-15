@@ -20,6 +20,7 @@ export default async function ReaderPage({ searchParams }: { searchParams: Searc
   const sp = await searchParams;
   const relative = str(sp.file);
   const askedPage = Number(str(sp.page));
+  const find = str(sp.find)?.slice(0, 200);
   const root = getSettings().downloadRoot;
   const file = relative ? await findLibraryFile(root, relative) : null;
   if (!file || (file.ext !== 'pdf' && file.ext !== 'txt')) notFound();
@@ -33,7 +34,7 @@ export default async function ReaderPage({ searchParams }: { searchParams: Searc
 
   if (file.ext === 'pdf') {
     const start = Number.isInteger(askedPage) && askedPage >= 1 ? askedPage : (progress?.page ?? 1);
-    return <PdfReader file={file.relative} title={title} backHref={backHref} initialPage={start} next={next} />;
+    return <PdfReader file={file.relative} title={title} backHref={backHref} initialPage={start} next={next} initialFind={find} />;
   }
 
   const handle = await fs.open(file.path, 'r');
